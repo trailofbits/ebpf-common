@@ -1,0 +1,6 @@
+[submodule "libraries/libbpf/src"]
+	path = libraries/libbpf/src
+	url = https://github.com/libbpf/libbpf
+[submodule "libraries/Catch2/src"]
+	path = libraries/Catch2/src
+	url = https://github.com/catchorg/Catch2.git
