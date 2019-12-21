@@ -29,6 +29,9 @@ const std::string kKprobeTypePath{
 
 const std::string kKprobeReturnBitPath{"/sys/devices/kprobe/format/retprobe"};
 
+const std::string kLinuxVersionHeaderPath{"/usr/include/linux/version.h"};
+const std::string kDefinitionName{"LINUX_VERSION_CODE"};
+
 StringErrorOr<std::string> readFile(const std::string &path) {
   std::ifstream input_file(path);
 
@@ -364,5 +367,69 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
   }
 
   return output;
+}
+
+StringErrorOr<std::uint32_t> getLinuxKernelVersionCode() {
+  std::string header_contents;
+
+  {
+    std::fstream linux_version_header(kLinuxVersionHeaderPath);
+    if (!linux_version_header) {
+      return StringError::create(
+          "Failed to open the Linux kernel version header");
+    }
+
+    std::stringstream buffer;
+    buffer << linux_version_header.rdbuf();
+    if (!linux_version_header) {
+      return StringError::create(
+          "Failed to read the Linux kernel version header");
+    }
+
+    header_contents = buffer.str();
+  }
+
+  auto definition_index = header_contents.find(kDefinitionName);
+  if (definition_index == std::string::npos) {
+    return StringError::create("Failed to locate the LINUX_VERSION_CODE "
+                               "definition in the Linux kernel version header");
+  }
+
+  auto base_index = definition_index + kDefinitionName.size() + 1;
+  if (base_index >= header_contents.size()) {
+    return StringError::create("Malformed Linux kernel version header");
+  }
+
+  std::size_t version_code_index{0U};
+
+  while (base_index < header_contents.size()) {
+    auto current_char = header_contents.at(base_index);
+
+    if (current_char == '\n' || current_char == '\x00') {
+      break;
+    }
+
+    if (std::isdigit(current_char)) {
+      version_code_index = base_index;
+      break;
+    }
+
+    ++base_index;
+  }
+
+  if (version_code_index == 0U) {
+    return StringError::create(
+        "Failed to locate the Linux kernel version code inside the header");
+  }
+
+  const char *version_code_ptr = header_contents.c_str() + version_code_index;
+
+  char *field_terminator{nullptr};
+  auto version_code = std::strtoul(version_code_ptr, &field_terminator, 10);
+  if (field_terminator == nullptr || *field_terminator != '\n') {
+    return StringError::create("Failed to parse the Linux kernel version code");
+  }
+
+  return static_cast<std::uint32_t>(version_code);
 }
 } // namespace tob::ebpf
