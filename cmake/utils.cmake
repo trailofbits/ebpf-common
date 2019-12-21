@@ -65,6 +65,7 @@ function(generateSettingsTargets)
 
     target_link_libraries(cxx_target_settings INTERFACE
       libc++abi.a
+      libc++fs.a
       rt
     )
 
