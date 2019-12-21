@@ -1,5 +1,9 @@
 # ebpf-common
 
+| | |
+|-|-|
+| CI Status | ![](https://github.com/trailofbits/ebpf-common/workflows/Linux/badge.svg) |
+
 This object library contains code shared by the following projects:
 
 | Name | Description |
