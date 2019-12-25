@@ -22,9 +22,30 @@ public:
 
   ~BPFSyscallInterface();
 
-  void overrideReturn(llvm::Value *context, std::uint64_t exit_code);
   llvm::Value *getCurrentPidTgid();
+  llvm::Value *getCurrentUidGid();
+
   llvm::Value *getPrandomU32();
+  llvm::Value *ktimeGetNs();
+
+  llvm::Value *mapLookupElem(int map_fd, llvm::Value *key, llvm::Type *type);
+
+  llvm::Value *mapUpdateElem(int map_fd, llvm::Value *value, llvm::Value *key,
+                             int flags);
+
+  llvm::Value *probeRead(llvm::Value *dest, llvm::Value *size,
+                         llvm::Value *src);
+
+  llvm::Value *probeReadStr(llvm::Value *dest, std::size_t size,
+                            llvm::Value *src);
+
+  llvm::Value *getSmpProcessorId();
+
+  llvm::Value *perfEventOutput(llvm::Value *context, int map_fd,
+                               std::uint64_t flags, llvm::Value *data_ptr,
+                               std::uint32_t data_size);
+
+  void overrideReturn(llvm::Value *context, std::uint64_t exit_code);
 
   BPFSyscallInterface(const BPFSyscallInterface &) = delete;
   BPFSyscallInterface &operator=(const BPFSyscallInterface &) = delete;
@@ -34,5 +55,8 @@ private:
   std::unique_ptr<PrivateData> d;
 
   BPFSyscallInterface(llvm::IRBuilder<> &builder);
+
+  llvm::Function *getPseudoFunction();
+  llvm::Value *pseudoMapFd(int fd);
 };
 } // namespace tob::ebpf
