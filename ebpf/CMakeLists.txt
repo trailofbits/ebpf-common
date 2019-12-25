@@ -29,6 +29,9 @@ function(ebpfCommonEbpf)
 
     include/tob/ebpf/sectionmemorymanager.h
     src/sectionmemorymanager.cpp
+
+    include/tob/ebpf/bpfsyscallinterface.h
+    src/bpfsyscallinterface.cpp
   )
 
   target_include_directories(ebpf PUBLIC include)
