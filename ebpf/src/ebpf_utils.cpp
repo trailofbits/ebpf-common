@@ -376,14 +376,16 @@ StringErrorOr<std::uint32_t> getLinuxKernelVersionCode() {
     std::fstream linux_version_header(kLinuxVersionHeaderPath);
     if (!linux_version_header) {
       return StringError::create(
-          "Failed to open the Linux kernel version header");
+          "Failed to open the Linux kernel version header: " +
+          kLinuxVersionHeaderPath);
     }
 
     std::stringstream buffer;
     buffer << linux_version_header.rdbuf();
     if (!linux_version_header) {
       return StringError::create(
-          "Failed to read the Linux kernel version header");
+          "Failed to read the Linux kernel version header: " +
+          kLinuxVersionHeaderPath);
     }
 
     header_contents = buffer.str();
