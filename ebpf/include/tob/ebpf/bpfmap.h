@@ -107,7 +107,9 @@ private:
 
 template <enum bpf_map_type map_type, typename KeyType>
 struct BPFMap<map_type, KeyType>::PrivateData final {
-  union bpf_attr map_attr {};
+  PrivateData() { std::memset(&map_attr, 0, sizeof(map_attr)); }
+
+  union bpf_attr map_attr;
   std::size_t value_size{0U};
   int fd{-1};
 };
@@ -170,11 +172,12 @@ BPFMapErrorCode BPFMap<map_type, KeyType>::set(const KeyType &key,
                                                const std::uint8_t *value) {
 
   union bpf_attr attr = {};
-  memset(&attr, 0, sizeof(union bpf_attr));
-
   attr.map_fd = static_cast<__u32>(d->fd);
-  attr.key = reinterpret_cast<__u64>(&key);
-  attr.value = reinterpret_cast<__u64>(value);
+
+  auto key_ptr = &key;
+  std::memcpy(&attr.key, &key_ptr, sizeof(attr.key));
+  std::memcpy(&attr.value, &value, sizeof(attr.value));
+
   attr.flags = BPF_ANY;
 
   auto err =
@@ -209,11 +212,11 @@ template <enum bpf_map_type map_type, typename KeyType>
 BPFMapErrorCode BPFMap<map_type, KeyType>::get(std::uint8_t *value,
                                                const KeyType &key) {
   union bpf_attr attr = {};
-  memset(&attr, 0, sizeof(union bpf_attr));
-
   attr.map_fd = static_cast<__u32>(d->fd);
-  attr.key = reinterpret_cast<__u64>(&key);
-  attr.value = reinterpret_cast<__u64>(value);
+
+  auto key_ptr = &key;
+  std::memcpy(&attr.key, &key_ptr, sizeof(attr.key));
+  std::memcpy(&attr.value, &value, sizeof(attr.value));
 
   auto err =
       ::syscall(__NR_bpf, BPF_MAP_LOOKUP_ELEM, &attr, sizeof(union bpf_attr));
@@ -236,10 +239,10 @@ template <enum bpf_map_type map_type, typename KeyType>
 BPFMapErrorCode BPFMap<map_type, KeyType>::erase(const KeyType &key) {
 
   union bpf_attr attr = {};
-  memset(&attr, 0, sizeof(union bpf_attr));
-
   attr.map_fd = static_cast<__u32>(d->fd);
-  attr.key = reinterpret_cast<__u64>(&key);
+
+  auto key_ptr = &key;
+  std::memcpy(&attr.key, &key_ptr, sizeof(attr.key));
 
   auto err =
       ::syscall(__NR_bpf, BPF_MAP_DELETE_ELEM, &attr, sizeof(union bpf_attr));
@@ -264,7 +267,6 @@ BPFMap<map_type, KeyType>::BPFMap(std::size_t value_size,
     : d(new PrivateData) {
   d->value_size = value_size;
 
-  memset(&d->map_attr, 0, sizeof(union bpf_attr));
   d->map_attr.map_type = map_type;
   d->map_attr.key_size = sizeof(KeyType);
   d->map_attr.value_size = static_cast<__u32>(d->value_size);
