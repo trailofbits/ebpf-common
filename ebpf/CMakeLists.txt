@@ -14,9 +14,13 @@ function(ebpfCommonEbpf)
     include/tob/ebpf/bpfmap.h
     include/tob/ebpf/types.h
     include/tob/ebpf/typedbpfmap.h
+    include/tob/ebpf/structure.h
 
-    include/tob/ebpf/tracepointevent.h
-    src/tracepointevent.cpp
+    include/tob/ebpf/iperfevent.h
+    src/iperfevent.cpp
+
+    include/tob/ebpf/tracepointdescriptor.h
+    src/tracepointdescriptor.cpp
 
     include/tob/ebpf/perfeventarray.h
     src/perfeventarray.cpp
@@ -32,6 +36,9 @@ function(ebpfCommonEbpf)
 
     include/tob/ebpf/bpfsyscallinterface.h
     src/bpfsyscallinterface.cpp
+
+    src/tracepointperfevent.h
+    src/tracepointperfevent.cpp
   )
 
   target_include_directories(ebpf PUBLIC include)

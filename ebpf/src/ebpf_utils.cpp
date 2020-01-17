@@ -23,174 +23,9 @@
 #include <tob/ebpf/sectionmemorymanager.h>
 
 namespace tob::ebpf {
-namespace {
-const std::string kKprobeTypePath{
-    "/sys/bus/event_source/devices/kprobe/subsystem/devices/kprobe/type"};
-
-const std::string kKprobeReturnBitPath{"/sys/devices/kprobe/format/retprobe"};
 const std::string kLinuxVersionHeaderPath{"/usr/include/linux/version.h"};
 const std::string kDefinitionName{"LINUX_VERSION_CODE"};
-static const std::string kProgramLicense{"GPL"};
-
-StringErrorOr<std::string> readFile(const std::string &path) {
-  std::ifstream input_file(path);
-
-  std::stringstream buffer;
-  buffer << input_file.rdbuf();
-
-  if (!input_file) {
-    return StringError::create("Failed to read the input file");
-  }
-
-  return buffer.str();
-}
-
-StringErrorOr<std::uint32_t> getKProbeType() {
-  auto buffer_exp = readFile(kKprobeTypePath);
-  if (!buffer_exp.succeeded()) {
-    return buffer_exp.error();
-  }
-
-  auto buffer = buffer_exp.takeValue();
-
-  char *integer_terminator{nullptr};
-  auto integer_value = std::strtol(buffer.data(), &integer_terminator, 10);
-
-  if (!(integer_terminator != nullptr && std::isspace(*integer_terminator))) {
-    return StringError::create("Failed to parse the integer value");
-  }
-
-  return static_cast<std::uint32_t>(integer_value);
-}
-
-StringErrorOr<bool> getKprobeReturnBit() {
-  auto buffer_exp = readFile(kKprobeReturnBitPath);
-  if (!buffer_exp.succeeded()) {
-    return buffer_exp.error();
-  }
-
-  auto buffer = buffer_exp.takeValue();
-
-  auto value_ptr = buffer.data() + std::strlen("config:");
-  if (value_ptr >= buffer.data() + buffer.size()) {
-    return StringError::create("Invalid buffer contents");
-  }
-
-  char *integer_terminator{nullptr};
-  auto integer_value = std::strtol(value_ptr, &integer_terminator, 10);
-
-  if (!(integer_terminator != nullptr && std::isspace(*integer_terminator))) {
-    return StringError::create("Failed to parse the integer value");
-  }
-
-  if (integer_value == 0) {
-    return false;
-
-  } else if (integer_value == 1) {
-    return true;
-
-  } else {
-    return StringError::create("Unexpected integer value");
-  }
-}
-} // namespace
-
-StringErrorOr<utils::UniqueFd>
-createKprobeEvent(bool is_kretprobe, const std::string &function_name,
-                  std::uint64_t offset, pid_t process_id) {
-
-  struct perf_event_attr attr = {};
-  attr.sample_period = 1;
-  attr.wakeup_events = 1;
-  attr.config2 = offset;
-  attr.size = sizeof(attr);
-
-  auto string_ptr = function_name.c_str();
-  std::memcpy(&attr.config1, &string_ptr, sizeof(string_ptr));
-
-  auto probe_type_exp = getKProbeType();
-  if (!probe_type_exp.succeeded()) {
-    return probe_type_exp.error();
-  }
-
-  attr.type = probe_type_exp.takeValue();
-
-  if (is_kretprobe) {
-    auto probe_return_bit_exp = getKprobeReturnBit();
-    if (!probe_return_bit_exp.succeeded()) {
-      return probe_return_bit_exp.error();
-    }
-
-    auto probe_return_bit = probe_return_bit_exp.takeValue();
-
-    attr.config |= 1 << probe_return_bit;
-  }
-
-  int cpu_index;
-  if (process_id != -1) {
-    cpu_index = -1;
-  } else {
-    cpu_index = 0;
-  }
-
-  auto event_fd = syscall(__NR_perf_event_open, &attr, process_id, cpu_index,
-                          -1, PERF_FLAG_FD_CLOEXEC);
-
-  if (event_fd == -1) {
-    return StringError::create("Failed to create the event");
-  }
-
-  utils::UniqueFd unique_fd;
-  unique_fd.reset(static_cast<int>(event_fd));
-
-  return unique_fd;
-}
-
-StringErrorOr<utils::UniqueFd>
-createTracepointEvent(std::uint32_t event_identifier, pid_t process_id) {
-
-  int cpu_index;
-  if (process_id != -1) {
-    cpu_index = -1;
-  } else {
-    cpu_index = 0;
-  }
-
-  struct perf_event_attr perf_attr = {};
-  perf_attr.type = PERF_TYPE_TRACEPOINT;
-  perf_attr.size = sizeof(struct perf_event_attr);
-  perf_attr.config = event_identifier;
-  perf_attr.sample_period = 1;
-  perf_attr.sample_type = PERF_SAMPLE_RAW;
-  perf_attr.wakeup_events = 1;
-  perf_attr.disabled = 1;
-
-  auto event_fd =
-      static_cast<int>(::syscall(__NR_perf_event_open, &perf_attr, process_id,
-                                 cpu_index, -1, PERF_FLAG_FD_CLOEXEC));
-
-  if (event_fd == -1) {
-    throw StringError::create("Failed to create the perf output");
-  }
-
-  utils::UniqueFd unique_fd;
-  unique_fd.reset(static_cast<int>(event_fd));
-
-  return unique_fd;
-}
-
-SuccessOrStringError closeEvent(utils::UniqueFd &event_fd) {
-  if (event_fd.get() == -1) {
-    return {};
-  }
-
-  if (ioctl(event_fd.get(), PERF_EVENT_IOC_DISABLE, 0) < 0) {
-    return StringError::create("Failed to enable the perf BPF output");
-  }
-
-  event_fd.reset();
-  return {};
-}
+const std::string kProgramLicense{"GPL"};
 
 StringErrorOr<BPFProgramMap> compileModule(llvm::Module &module) {
   auto module_copy = llvm::CloneModule(module);
@@ -305,9 +140,41 @@ createPerfEventOutputForCPU(std::size_t processor_index,
 }
 
 StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
-                                           int event_fd,
-                                           bpf_prog_type program_type,
-                                           std::uint32_t linux_version) {
+                                           IPerfEvent &perf_event) {
+
+  bpf_prog_type program_type{};
+  std::uint32_t linux_version{};
+
+  switch (perf_event.type()) {
+  case IPerfEvent::Type::Tracepoint: {
+    program_type = BPF_PROG_TYPE_TRACEPOINT;
+    break;
+  }
+
+  case IPerfEvent::Type::Kprobe:
+  case IPerfEvent::Type::Kretprobe: {
+    program_type = BPF_PROG_TYPE_KPROBE;
+
+    auto linux_version_exp = getLinuxKernelVersionCode();
+    if (!linux_version_exp.succeeded()) {
+      return linux_version_exp.error();
+    }
+
+    linux_version = linux_version_exp.takeValue();
+    break;
+  }
+
+  // TODO(alessandro): is this correct?
+  case IPerfEvent::Type::Uprobe:
+  case IPerfEvent::Type::Uretprobe: {
+    program_type = BPF_PROG_TYPE_KPROBE;
+    break;
+  }
+
+  default: {
+    return StringError::create("Unsupported perf event type");
+  }
+  }
 
   // Load the program
   union bpf_attr attr = {};
@@ -359,14 +226,14 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
     return StringError::create(error_message);
   }
 
-  if (ioctl(event_fd, PERF_EVENT_IOC_SET_BPF, output.get()) < 0) {
+  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_SET_BPF, output.get()) < 0) {
     return StringError::create(
-        "Failed to attach the perf output to the BPF program: " +
+        "Failed to attach the BPF program to the perf event: " +
         std::to_string(errno));
   }
 
-  if (ioctl(event_fd, PERF_EVENT_IOC_ENABLE, 0) < 0) {
-    return StringError::create("Failed to enable the perf output: " +
+  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_ENABLE, 0) < 0) {
+    return StringError::create("Failed to enable the perf event: " +
                                std::to_string(errno));
   }
 

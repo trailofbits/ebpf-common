@@ -40,7 +40,7 @@ function(generateEbpfCommonTests)
     tests/erroror.cpp
     tests/llvm_utils.cpp
     tests/sectionmemorymanager.cpp
-    tests/tracepointevent.cpp
+    tests/tracepointdescriptor.cpp
     tests/typedbpfmap.cpp
     tests/uniqueref.cpp
   )
