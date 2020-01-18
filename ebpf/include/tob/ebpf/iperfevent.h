@@ -34,6 +34,11 @@ public:
                                              std::uint64_t identifier,
                                              std::int32_t process_id = -1);
 
+  static StringErrorOr<Ref> createKprobe(const std::string &name,
+                                         bool ret_probe,
+                                         std::uint64_t identifier,
+                                         std::int32_t process_id = -1);
+
   IPerfEvent() = default;
   virtual ~IPerfEvent() = default;
 

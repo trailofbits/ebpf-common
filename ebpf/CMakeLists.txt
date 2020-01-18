@@ -39,6 +39,9 @@ function(ebpfCommonEbpf)
 
     src/tracepointperfevent.h
     src/tracepointperfevent.cpp
+
+    src/kprobeperfevent.h
+    src/kprobeperfevent.cpp
   )
 
   target_include_directories(ebpf PUBLIC include)
