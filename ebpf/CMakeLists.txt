@@ -40,8 +40,14 @@ function(ebpfCommonEbpf)
     src/tracepointperfevent.h
     src/tracepointperfevent.cpp
 
+    src/kprobe_helpers.h
+    src/kprobe_helpers.cpp
+
     src/kprobeperfevent.h
     src/kprobeperfevent.cpp
+
+    src/uprobeperfevent.h
+    src/uprobeperfevent.cpp
   )
 
   target_include_directories(ebpf PUBLIC include)

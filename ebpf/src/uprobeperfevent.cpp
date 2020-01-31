@@ -6,7 +6,7 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include "kprobeperfevent.h"
+#include "uprobeperfevent.h"
 #include "kprobe_helpers.h"
 
 #include <linux/perf_event.h>
@@ -16,43 +16,65 @@
 #include <tob/utils/uniquefd.h>
 
 namespace tob::ebpf {
-struct KprobePerfEvent::PrivateData final {
+namespace {
+StringErrorOr<std::uint64_t> getSymbolFileOffset(const std::string &path,
+                                                 const std::string &name) {
+  static_cast<void>(path);
+  static_cast<void>(name);
+
+  return 0x17800ULL;
+}
+} // namespace
+struct UprobePerfEvent::PrivateData final {
   std::string name;
+  std::string path;
   bool ret_probe{false};
   std::uint64_t identifier{0U};
   utils::UniqueFd event;
+  std::uint64_t offset{0U};
 };
 
-KprobePerfEvent::~KprobePerfEvent() {}
+UprobePerfEvent::~UprobePerfEvent() {}
 
-KprobePerfEvent::Type KprobePerfEvent::type() const {
-  return d->ret_probe ? Type::Kretprobe : Type::Kprobe;
+UprobePerfEvent::Type UprobePerfEvent::type() const {
+  return d->ret_probe ? Type::Uretprobe : Type::Uprobe;
 }
 
-const std::string &KprobePerfEvent::name() const { return d->name; }
+const std::string &UprobePerfEvent::name() const { return d->name; }
 
-std::uint64_t KprobePerfEvent::identifier() const { return d->identifier; }
+std::uint64_t UprobePerfEvent::identifier() const { return d->identifier; }
 
-int KprobePerfEvent::fd() const { return d->event.get(); }
+int UprobePerfEvent::fd() const { return d->event.get(); }
 
-KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
+UprobePerfEvent::UprobePerfEvent(const std::string &name,
+                                 const std::string &path, bool ret_probe,
                                  std::uint64_t identifier,
                                  std::int32_t process_id)
     : d(new PrivateData) {
 
   d->name = name;
+  d->path = path;
   d->identifier = identifier;
   d->ret_probe = ret_probe;
+
+  auto symbol_offset_exp = getSymbolFileOffset(path, name);
+  if (!symbol_offset_exp.succeeded()) {
+    throw symbol_offset_exp.error();
+  }
+
+  d->offset = symbol_offset_exp.takeValue();
 
   struct perf_event_attr attr = {};
   attr.sample_period = 1;
   attr.wakeup_events = 1;
   attr.size = sizeof(attr);
 
-  auto string_ptr = name.c_str();
-  std::memcpy(&attr.kprobe_func, &string_ptr, sizeof(string_ptr));
+  auto path_ptr = path.c_str();
+  std::memcpy(&attr.uprobe_path, &path_ptr, sizeof(path_ptr));
 
-  auto probe_type_exp = getKprobeType();
+  attr.probe_offset = static_cast<__u64>(d->offset);
+
+  auto probe_type_exp = getUprobeType();
   if (!probe_type_exp.succeeded()) {
     throw probe_type_exp.error();
   }
@@ -60,7 +82,7 @@ KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
   attr.type = probe_type_exp.takeValue();
 
   if (ret_probe) {
-    auto probe_return_bit_exp = getKprobeReturnBit();
+    auto probe_return_bit_exp = getUprobeReturnBit();
     if (!probe_return_bit_exp.succeeded()) {
       throw probe_return_bit_exp.error();
     }
@@ -82,7 +104,7 @@ KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
   if (fd == -1) {
     std::string event_type = ret_probe ? "exit" : "enter";
     throw StringError::create("Failed to create the " + event_type +
-                              "Kprobe event. Errno: " + std::to_string(errno));
+                              " Uprobe event. Errno: " + std::to_string(errno));
   }
 
   d->event.reset(fd);

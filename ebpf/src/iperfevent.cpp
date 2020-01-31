@@ -8,6 +8,7 @@
 
 #include "kprobeperfevent.h"
 #include "tracepointperfevent.h"
+#include "uprobeperfevent.h"
 
 #include <tob/ebpf/iperfevent.h>
 
@@ -33,6 +34,22 @@ IPerfEvent::createKprobe(const std::string &name, bool ret_probe,
 
   try {
     return Ref(new KprobePerfEvent(name, ret_probe, identifier, process_id));
+
+  } catch (const std::bad_alloc &) {
+    return StringError::create("Memory allocation failure");
+
+  } catch (const StringError &error) {
+    return error;
+  }
+}
+
+StringErrorOr<IPerfEvent::Ref>
+IPerfEvent::createUprobe(const std::string &name, const std::string &path,
+                         bool ret_probe, std::uint64_t identifier,
+                         std::int32_t process_id) {
+  try {
+    return Ref(
+        new UprobePerfEvent(name, path, ret_probe, identifier, process_id));
 
   } catch (const std::bad_alloc &) {
     return StringError::create("Memory allocation failure");
