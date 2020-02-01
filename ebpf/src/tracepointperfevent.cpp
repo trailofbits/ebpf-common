@@ -40,7 +40,7 @@ bool configureTracepointEvent(const std::string &name, bool enable) {
 
 struct TracepointPerfEvent::PrivateData final {
   std::string name;
-  std::uint64_t identifier{0U};
+  std::uint32_t identifier{0U};
   utils::UniqueFd event;
 };
 
@@ -57,12 +57,12 @@ TracepointPerfEvent::Type TracepointPerfEvent::type() const {
 
 const std::string &TracepointPerfEvent::name() const { return d->name; }
 
-std::uint64_t TracepointPerfEvent::identifier() const { return d->identifier; }
+std::uint32_t TracepointPerfEvent::identifier() const { return d->identifier; }
 
 int TracepointPerfEvent::fd() const { return d->event.get(); }
 
 TracepointPerfEvent::TracepointPerfEvent(const std::string &name,
-                                         std::uint64_t identifier,
+                                         std::uint32_t identifier,
                                          std::int32_t process_id)
     : d(new PrivateData) {
   d->name = name;

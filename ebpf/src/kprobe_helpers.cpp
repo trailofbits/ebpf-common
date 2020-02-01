@@ -15,14 +15,13 @@
 
 namespace tob::ebpf {
 namespace {
-const std::string kKprobeTypePath{
-    "/sys/bus/event_source/devices/kprobe/subsystem/devices/kprobe/type"};
+const std::string kKprobeTypePath{"/sys/bus/event_source/devices/kprobe/type"};
+const std::string kKprobeReturnBitPath{
+    "/sys/bus/event_source/devices/kprobe/format/retprobe"};
 
-const std::string kUprobeTypePath{
-    "/sys/bus/event_source/devices/uprobe/subsystem/devices/uprobe/type"};
-
-const std::string kKprobeReturnBitPath{"/sys/devices/kprobe/format/retprobe"};
-const std::string kUprobeReturnBitPath{"/sys/devices/uprobe/format/retprobe"};
+const std::string kUprobeTypePath{"/sys/bus/event_source/devices/uprobe/type"};
+const std::string kUprobeReturnBitPath{
+    "/sys/bus/event_source/devices/uprobe/format/retprobe"};
 
 StringErrorOr<std::string> readFile(const std::string &path) {
   std::ifstream input_file(path);

@@ -29,7 +29,7 @@ struct UprobePerfEvent::PrivateData final {
   std::string name;
   std::string path;
   bool ret_probe{false};
-  std::uint64_t identifier{0U};
+  std::uint32_t identifier{0U};
   utils::UniqueFd event;
   std::uint64_t offset{0U};
 };
@@ -42,13 +42,13 @@ UprobePerfEvent::Type UprobePerfEvent::type() const {
 
 const std::string &UprobePerfEvent::name() const { return d->name; }
 
-std::uint64_t UprobePerfEvent::identifier() const { return d->identifier; }
+std::uint32_t UprobePerfEvent::identifier() const { return d->identifier; }
 
 int UprobePerfEvent::fd() const { return d->event.get(); }
 
 UprobePerfEvent::UprobePerfEvent(const std::string &name,
                                  const std::string &path, bool ret_probe,
-                                 std::uint64_t identifier,
+                                 std::uint32_t identifier,
                                  std::int32_t process_id)
     : d(new PrivateData) {
 

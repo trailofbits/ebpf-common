@@ -14,7 +14,7 @@
 
 namespace tob::ebpf {
 StringErrorOr<IPerfEvent::Ref>
-IPerfEvent::createTracepoint(const std::string &name, std::uint64_t identifier,
+IPerfEvent::createTracepoint(const std::string &name, std::uint32_t identifier,
                              std::int32_t process_id) {
 
   try {
@@ -30,7 +30,7 @@ IPerfEvent::createTracepoint(const std::string &name, std::uint64_t identifier,
 
 StringErrorOr<IPerfEvent::Ref>
 IPerfEvent::createKprobe(const std::string &name, bool ret_probe,
-                         std::uint64_t identifier, std::int32_t process_id) {
+                         std::uint32_t identifier, std::int32_t process_id) {
 
   try {
     return Ref(new KprobePerfEvent(name, ret_probe, identifier, process_id));
@@ -45,7 +45,7 @@ IPerfEvent::createKprobe(const std::string &name, bool ret_probe,
 
 StringErrorOr<IPerfEvent::Ref>
 IPerfEvent::createUprobe(const std::string &name, const std::string &path,
-                         bool ret_probe, std::uint64_t identifier,
+                         bool ret_probe, std::uint32_t identifier,
                          std::int32_t process_id) {
   try {
     return Ref(

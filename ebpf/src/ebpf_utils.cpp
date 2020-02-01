@@ -152,7 +152,9 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
   }
 
   case IPerfEvent::Type::Kprobe:
-  case IPerfEvent::Type::Kretprobe: {
+  case IPerfEvent::Type::Kretprobe:
+  case IPerfEvent::Type::Uprobe:
+  case IPerfEvent::Type::Uretprobe: {
     program_type = BPF_PROG_TYPE_KPROBE;
 
     auto linux_version_exp = getLinuxKernelVersionCode();
@@ -161,13 +163,6 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
     }
 
     linux_version = linux_version_exp.takeValue();
-    break;
-  }
-
-  // TODO(alessandro): is this correct?
-  case IPerfEvent::Type::Uprobe:
-  case IPerfEvent::Type::Uretprobe: {
-    program_type = BPF_PROG_TYPE_KPROBE;
     break;
   }
 

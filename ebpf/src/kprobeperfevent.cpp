@@ -19,7 +19,7 @@ namespace tob::ebpf {
 struct KprobePerfEvent::PrivateData final {
   std::string name;
   bool ret_probe{false};
-  std::uint64_t identifier{0U};
+  std::uint32_t identifier{0U};
   utils::UniqueFd event;
 };
 
@@ -31,12 +31,12 @@ KprobePerfEvent::Type KprobePerfEvent::type() const {
 
 const std::string &KprobePerfEvent::name() const { return d->name; }
 
-std::uint64_t KprobePerfEvent::identifier() const { return d->identifier; }
+std::uint32_t KprobePerfEvent::identifier() const { return d->identifier; }
 
 int KprobePerfEvent::fd() const { return d->event.get(); }
 
 KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
-                                 std::uint64_t identifier,
+                                 std::uint32_t identifier,
                                  std::int32_t process_id)
     : d(new PrivateData) {
 
