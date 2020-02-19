@@ -82,9 +82,9 @@ UprobePerfEvent::UprobePerfEvent(const std::string &name,
   attr.size = sizeof(attr);
 
   auto path_ptr = path.c_str();
-  std::memcpy(&attr.uprobe_path, &path_ptr, sizeof(path_ptr));
+  std::memcpy(&attr.config1, &path_ptr, sizeof(path_ptr));
 
-  attr.probe_offset = static_cast<__u64>(d->offset);
+  attr.config2 = static_cast<__u64>(d->offset);
 
   auto probe_type_exp = getUprobeType();
   if (!probe_type_exp.succeeded()) {

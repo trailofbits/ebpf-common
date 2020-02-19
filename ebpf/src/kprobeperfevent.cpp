@@ -50,7 +50,7 @@ KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
   attr.size = sizeof(attr);
 
   auto string_ptr = name.c_str();
-  std::memcpy(&attr.kprobe_func, &string_ptr, sizeof(string_ptr));
+  std::memcpy(&attr.config1, &string_ptr, sizeof(string_ptr));
 
   auto probe_type_exp = getKprobeType();
   if (!probe_type_exp.succeeded()) {
