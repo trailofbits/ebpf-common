@@ -12,7 +12,7 @@
 #include <iostream>
 #include <string>
 
-#include <tob/ebpf/tracepointevent.h>
+#include <tob/ebpf/tracepointdescriptor.h>
 
 namespace tob::ebpf {
 namespace {
@@ -24,34 +24,9 @@ const std::string kFieldSectionName{"field:"};
 const std::string kOffsetFieldName{"offset:"};
 const std::string kSizeFieldName{"size:"};
 const std::string kSignedFieldName{"signed:"};
-
-bool configureTracepointEvent(const TracepointEvent &tracepoint_event,
-                              bool enable) {
-  auto enable_switch_path_exp =
-      tracepoint_event.path(TracepointEvent::PathType::EnableSwitch);
-
-  if (!enable_switch_path_exp.succeeded()) {
-    return false;
-  }
-
-  auto enable_switch_path = enable_switch_path_exp.takeValue();
-
-  std::fstream f(enable_switch_path, std::ios::out | std::ios::binary);
-
-  if (!f) {
-    return false;
-  }
-
-  f << (enable ? '1' : '0');
-  if (!f) {
-    return false;
-  }
-
-  return true;
-}
 } // namespace
 
-struct TracepointEvent::PrivateData final {
+struct TracepointDescriptor::PrivateData final {
   std::string category;
   std::string name;
 
@@ -62,10 +37,11 @@ struct TracepointEvent::PrivateData final {
   bool enabled{false};
 };
 
-StringErrorOr<TracepointEvent::Ref>
-TracepointEvent::create(const std::string &category, const std::string &name) {
+StringErrorOr<TracepointDescriptor::Ref>
+TracepointDescriptor::create(const std::string &category,
+                             const std::string &name) {
   try {
-    return Ref(new TracepointEvent(category, name));
+    return Ref(new TracepointDescriptor(category, name));
 
   } catch (const std::bad_alloc &) {
     return StringError::create("Memory allocation failure");
@@ -75,18 +51,16 @@ TracepointEvent::create(const std::string &category, const std::string &name) {
   }
 }
 
-TracepointEvent::~TracepointEvent() {
-  if (!disable()) {
-    std::cerr << "Failed to disable the tracepoint\n";
-  }
+TracepointDescriptor::~TracepointDescriptor() {}
+
+const std::string &TracepointDescriptor::category() const {
+  return d->category;
 }
 
-const std::string &TracepointEvent::category() const { return d->category; }
+const std::string &TracepointDescriptor::name() const { return d->name; }
 
-const std::string &TracepointEvent::name() const { return d->name; }
-
-StringErrorOr<std::string>
-TracepointEvent::path(const TracepointEvent::PathType &path_type) const {
+StringErrorOr<std::string> TracepointDescriptor::path(
+    const TracepointDescriptor::PathType &path_type) const {
 
   auto path_it = d->path_map.find(path_type);
   if (path_it == d->path_map.end()) {
@@ -96,38 +70,16 @@ TracepointEvent::path(const TracepointEvent::PathType &path_type) const {
   return path_it->second;
 }
 
-std::uint32_t TracepointEvent::eventIdentifier() const {
+std::uint32_t TracepointDescriptor::eventIdentifier() const {
   return d->event_identifier;
 }
 
-const TracepointEvent::Structure &TracepointEvent::structure() const {
+const Structure &TracepointDescriptor::structure() const {
   return d->structure;
 }
 
-bool TracepointEvent::enable() {
-  if (!configureTracepointEvent(*this, true)) {
-    return false;
-  }
-
-  d->enabled = true;
-  return true;
-}
-
-bool TracepointEvent::disable() {
-  if (!d->enabled) {
-    return true;
-  }
-
-  if (!configureTracepointEvent(*this, false)) {
-    return false;
-  }
-
-  d->enabled = false;
-  return true;
-}
-
-TracepointEvent::TracepointEvent(const std::string &category,
-                                 const std::string &name)
+TracepointDescriptor::TracepointDescriptor(const std::string &category,
+                                           const std::string &name)
     : d(new PrivateData) {
 
   d->category = category;
@@ -162,7 +114,7 @@ TracepointEvent::TracepointEvent(const std::string &category,
 
   auto tracepoint_format = tracepoint_format_exp.takeValue();
 
-  auto structure_exp = parseTracepointEventFormat(tracepoint_format);
+  auto structure_exp = parseTracepointDescriptorFormat(tracepoint_format);
   if (!structure_exp.succeeded()) {
     throw structure_exp.error();
   }
@@ -170,9 +122,9 @@ TracepointEvent::TracepointEvent(const std::string &category,
   d->structure = structure_exp.takeValue();
 }
 
-TracepointEvent::PathMap
-TracepointEvent::getTracepointPathMap(const std::string &category,
-                                      const std::string &name) {
+TracepointDescriptor::PathMap
+TracepointDescriptor::getTracepointPathMap(const std::string &category,
+                                           const std::string &name) {
 
   PathMap path_map;
 
@@ -191,7 +143,8 @@ TracepointEvent::getTracepointPathMap(const std::string &category,
   return path_map;
 }
 
-StringErrorOr<std::string> TracepointEvent::readFile(const std::string &path) {
+StringErrorOr<std::string>
+TracepointDescriptor::readFile(const std::string &path) {
   // We can't use seek on the tracepoint format file
   std::ifstream input_file(path, std::ios::in | std::ios::binary);
   if (!input_file) {
@@ -220,8 +173,8 @@ StringErrorOr<std::string> TracepointEvent::readFile(const std::string &path) {
   return output;
 }
 
-StringErrorOr<TracepointEvent::StructureField>
-TracepointEvent::parseTracepointEventFormatLine(
+StringErrorOr<StructureField>
+TracepointDescriptor::parseTracepointDescriptorFormatLine(
     const std::string &format_line) {
 
   // clang-format off
@@ -236,7 +189,7 @@ TracepointEvent::parseTracepointEventFormatLine(
   */
   // clang-format on
 
-  TracepointEvent::StructureField output{};
+  StructureField output{};
 
   // Determine where each field starts and stops
   auto declaration_field_start = 0U;
@@ -339,8 +292,8 @@ TracepointEvent::parseTracepointEventFormatLine(
   return output;
 }
 
-StringErrorOr<TracepointEvent::Structure>
-TracepointEvent::parseTracepointEventFormat(const std::string &format) {
+StringErrorOr<Structure> TracepointDescriptor::parseTracepointDescriptorFormat(
+    const std::string &format) {
 
   // clang-format off
   /*
@@ -365,7 +318,7 @@ TracepointEvent::parseTracepointEventFormat(const std::string &format) {
   */
   // clang-format on
 
-  TracepointEvent::Structure output;
+  Structure output;
 
   // Get the starting position
   auto format_section_index = format.find(kFormatSectionName);
@@ -398,7 +351,7 @@ TracepointEvent::parseTracepointEventFormat(const std::string &format) {
         format.substr(field_section_start_index,
                       field_section_end_index - field_section_start_index);
 
-    auto struct_field_exp = parseTracepointEventFormatLine(current_line);
+    auto struct_field_exp = parseTracepointDescriptorFormatLine(current_line);
 
     if (!struct_field_exp.succeeded()) {
       return struct_field_exp.error();
@@ -415,7 +368,7 @@ TracepointEvent::parseTracepointEventFormat(const std::string &format) {
 }
 
 std::string
-TracepointEvent::normalizeStructureFieldType(const std::string &type) {
+TracepointDescriptor::normalizeStructureFieldType(const std::string &type) {
   // clang-format off
   static const std::vector<std::string> kBlacklistedKeywords = {
     "__attribute__((user))"

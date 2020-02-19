@@ -8,29 +8,31 @@
 
 #include <catch2/catch.hpp>
 
-#include <tob/ebpf/tracepointevent.h>
+#include <tob/ebpf/tracepointdescriptor.h>
 
 namespace tob::ebpf {
-SCENARIO("The TracepointEvent class can open, parse and convert tracepoint "
-         "parameters",
-         "[TracepointEvent]") {
+SCENARIO(
+    "The TracepointDescriptor class can open, parse and convert tracepoint "
+    "parameters",
+    "[TracepointDescriptor]") {
 
   GIVEN("A category and name") {
     const std::string category{"syscalls"};
     const std::string name{"sys_enter_open"};
 
     WHEN("determining the tracepoint event paths") {
-      auto path_map = TracepointEvent::getTracepointPathMap(category, name);
+      auto path_map =
+          TracepointDescriptor::getTracepointPathMap(category, name);
 
       THEN("the category and event name are concatenated to form the absolute "
            "paths") {
 
         // clang-format off
-        const TracepointEvent::PathMap kExpectedPathMap = {
-          { TracepointEvent::PathType::Root, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open" },
-          { TracepointEvent::PathType::EnableSwitch, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/enable" },
-          { TracepointEvent::PathType::Format, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/format" },
-          { TracepointEvent::PathType::EventIdentifier, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/id" },
+        const TracepointDescriptor::PathMap kExpectedPathMap = {
+          { TracepointDescriptor::PathType::Root, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open" },
+          { TracepointDescriptor::PathType::EnableSwitch, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/enable" },
+          { TracepointDescriptor::PathType::Format, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/format" },
+          { TracepointDescriptor::PathType::EventIdentifier, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/id" },
         };
         // clang-format on
 
@@ -72,7 +74,8 @@ SCENARIO("The TracepointEvent class can open, parse and convert tracepoint "
 
     WHEN("parsing the whole file") {
       auto structure_exp =
-          TracepointEvent::parseTracepointEventFormat(tracepoint_format);
+          TracepointDescriptor::parseTracepointDescriptorFormat(
+              tracepoint_format);
 
       REQUIRE(structure_exp.succeeded());
 
@@ -80,7 +83,7 @@ SCENARIO("The TracepointEvent class can open, parse and convert tracepoint "
 
       THEN("only the actual tracepoint parameters are processed") {
         // clang-format off
-        const TracepointEvent::Structure expected_structure_data = {
+        const Structure expected_structure_data = {
           { "unsigned short", "common_type", 0U, 2U, false},
           { "unsigned char", "common_flags", 2U, 1U, false},
           { "unsigned char", "common_preempt_count", 3U, 1U, false},

@@ -6,7 +6,7 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-cmake_minimum_required(VERSION 3.16.1)
+cmake_minimum_required(VERSION 3.16.3)
 project("ebpf")
 
 function(ebpfCommonEbpf)
@@ -14,9 +14,13 @@ function(ebpfCommonEbpf)
     include/tob/ebpf/bpfmap.h
     include/tob/ebpf/types.h
     include/tob/ebpf/typedbpfmap.h
+    include/tob/ebpf/structure.h
 
-    include/tob/ebpf/tracepointevent.h
-    src/tracepointevent.cpp
+    include/tob/ebpf/iperfevent.h
+    src/iperfevent.cpp
+
+    include/tob/ebpf/tracepointdescriptor.h
+    src/tracepointdescriptor.cpp
 
     include/tob/ebpf/perfeventarray.h
     src/perfeventarray.cpp
@@ -32,6 +36,18 @@ function(ebpfCommonEbpf)
 
     include/tob/ebpf/bpfsyscallinterface.h
     src/bpfsyscallinterface.cpp
+
+    src/tracepointperfevent.h
+    src/tracepointperfevent.cpp
+
+    src/kprobe_helpers.h
+    src/kprobe_helpers.cpp
+
+    src/kprobeperfevent.h
+    src/kprobeperfevent.cpp
+
+    src/uprobeperfevent.h
+    src/uprobeperfevent.cpp
   )
 
   target_include_directories(ebpf PUBLIC include)

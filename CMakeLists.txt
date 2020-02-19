@@ -6,7 +6,7 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-cmake_minimum_required(VERSION 3.16.1)
+cmake_minimum_required(VERSION 3.16.3)
 
 include("cmake/options.cmake")
 include("cmake/sanitizers.cmake")
@@ -14,7 +14,7 @@ include("cmake/utils.cmake")
 
 project("ebpf-common")
 
-function(ebpfCommon)
+function(ebpfCommonMain)
   generateSettingsTargets()
 
   add_subdirectory("libraries")
@@ -40,7 +40,7 @@ function(generateEbpfCommonTests)
     tests/erroror.cpp
     tests/llvm_utils.cpp
     tests/sectionmemorymanager.cpp
-    tests/tracepointevent.cpp
+    tests/tracepointdescriptor.cpp
     tests/typedbpfmap.cpp
     tests/uniqueref.cpp
   )
@@ -59,4 +59,4 @@ function(generateEbpfCommonTests)
   )
 endfunction()
 
-ebpfCommon()
+ebpfCommonMain()

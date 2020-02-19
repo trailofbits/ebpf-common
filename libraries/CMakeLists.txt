@@ -6,11 +6,15 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-cmake_minimum_required(VERSION 3.16.1)
+cmake_minimum_required(VERSION 3.16.3)
 
-add_subdirectory("libbpf")
-add_subdirectory("LLVM")
+function(ebpfCommonLibraries)
+  add_subdirectory("libbpf")
+  add_subdirectory("LLVM")
 
-if(EBPF_COMMON_ENABLE_TESTS)
-  add_subdirectory("Catch2")
-endif()
+  if(EBPF_COMMON_ENABLE_TESTS)
+    add_subdirectory("Catch2")
+  endif()
+endfunction()
+
+ebpfCommonLibraries()
