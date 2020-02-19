@@ -13,18 +13,30 @@
 #include <linux/unistd.h>
 #include <unistd.h>
 
+#include <tob/utils/ielfimage.h>
 #include <tob/utils/uniquefd.h>
 
 namespace tob::ebpf {
 namespace {
 StringErrorOr<std::uint64_t> getSymbolFileOffset(const std::string &path,
                                                  const std::string &name) {
-  static_cast<void>(path);
-  static_cast<void>(name);
 
-  return 0x17800ULL;
+  auto elf_image_exp = utils::IELFImage::create(path);
+  if (!elf_image_exp.succeeded()) {
+    return elf_image_exp.error();
+  }
+
+  auto elf_image = elf_image_exp.takeValue();
+
+  auto function_offset_exp = elf_image->getExportedFunctionAddress(name);
+  if (!function_offset_exp.succeeded()) {
+    return function_offset_exp.error();
+  }
+
+  return function_offset_exp.takeValue();
 }
 } // namespace
+
 struct UprobePerfEvent::PrivateData final {
   std::string name;
   std::string path;

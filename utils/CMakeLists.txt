@@ -18,6 +18,10 @@ function(ebpfCommonUtils)
 
     include/tob/utils/uniquemappedmemory.h
     src/uniquemappedmemory.cpp
+
+    include/tob/utils/ielfimage.h
+    src/elfimage.h
+    src/elfimage.cpp
   )
 
   target_include_directories(utils PUBLIC include)
