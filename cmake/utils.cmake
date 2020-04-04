@@ -65,9 +65,15 @@ function(generateSettingsTargets)
 
     target_link_libraries(cxx_target_settings INTERFACE
       libc++abi.a
-      libc++fs.a
       rt
     )
+
+    find_library(cppfs_path "c++fs")
+    if(NOT "${cppfs_path}" STREQUAL "cppfs_path-NOTFOUND")
+      target_link_libraries(cxx_target_settings INTERFACE
+        "${cppfs_path}"
+      )
+    endif()
 
     message(STATUS "ebpf-common - libc++ support enabled")
   endif()
