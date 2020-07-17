@@ -8,7 +8,6 @@
 
 #include <cmath>
 #include <cstddef>
-#include <iostream>
 #include <vector>
 
 #include <linux/perf_event.h>
@@ -72,8 +71,13 @@ std::size_t PerfEventArray::memoryUsage() const {
 int PerfEventArray::fd() const { return d->perf_event_array_map->fd(); }
 
 bool PerfEventArray::read(std::vector<std::uint8_t> &buffer,
+                          std::size_t &read_error_count,
+                          std::size_t &lost_event_count,
                           const std::chrono::milliseconds &timeout) {
   buffer = {};
+
+  read_error_count = 0U;
+  lost_event_count = 0U;
 
   auto error = ::poll(d->perf_event_output_pollfd.data(),
                       d->perf_event_output_pollfd.size(),
@@ -108,7 +112,7 @@ bool PerfEventArray::read(std::vector<std::uint8_t> &buffer,
 
     for (const auto &perf_buffer : perf_buffer_list) {
       if (perf_buffer.size() < sizeof(struct perf_event_header)) {
-        std::cerr << "Not enough data in the perf buffer\n";
+        ++read_error_count;
         continue;
       }
 
@@ -116,12 +120,12 @@ bool PerfEventArray::read(std::vector<std::uint8_t> &buffer,
       std::memcpy(&event_header, perf_buffer.data(), sizeof(event_header));
 
       if (event_header.type == PERF_RECORD_LOST) {
-        std::cerr << "One or more records have been lost\n";
+        ++lost_event_count;
         continue;
       }
 
       if (sizeof(struct perf_event_header) + 4U > perf_buffer.size()) {
-        std::cerr << "Not enough data in the perf buffer\n";
+        ++read_error_count;
         continue;
       }
 
@@ -131,10 +135,8 @@ bool PerfEventArray::read(std::vector<std::uint8_t> &buffer,
       std::memcpy(&perf_record_size, perf_record_size_ptr,
                   sizeof(perf_record_size));
 
-      perf_record_size -= 4U;
-
       if (perf_record_size > perf_buffer.size() - sizeof(event_header)) {
-        std::cerr << "Not enough data in the perf buffer\n";
+        ++read_error_count;
         continue;
       }
 

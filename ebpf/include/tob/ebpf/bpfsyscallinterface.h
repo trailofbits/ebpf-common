@@ -33,6 +33,8 @@ public:
   llvm::Value *mapUpdateElem(int map_fd, llvm::Value *value, llvm::Value *key,
                              int flags);
 
+  llvm::Value *mapDeleteElem(int map_fd, llvm::Value *key);
+
   llvm::Value *probeRead(llvm::Value *dest, llvm::Value *size,
                          llvm::Value *src);
 
@@ -42,8 +44,9 @@ public:
   llvm::Value *getSmpProcessorId();
 
   llvm::Value *perfEventOutput(llvm::Value *context, int map_fd,
-                               std::uint64_t flags, llvm::Value *data_ptr,
-                               std::uint32_t data_size);
+                               llvm::Value *data_ptr, std::uint32_t data_size);
+
+  llvm::Value *getCurrentCgroupId();
 
   void overrideReturn(llvm::Value *context, std::uint64_t exit_code);
 

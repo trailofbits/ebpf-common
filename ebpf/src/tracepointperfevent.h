@@ -24,13 +24,10 @@ public:
   virtual ~TracepointPerfEvent() override;
 
   virtual Type type() const override;
-
-  virtual const std::string &name() const override;
-  virtual std::uint32_t identifier() const override;
   virtual int fd() const override;
 
 protected:
-  TracepointPerfEvent(const std::string &name, std::uint32_t identifier,
+  TracepointPerfEvent(const std::string &name, bool exit_event,
                       std::int32_t process_id);
 
   friend class IPerfEvent;

@@ -14,11 +14,11 @@
 
 namespace tob::ebpf {
 StringErrorOr<IPerfEvent::Ref>
-IPerfEvent::createTracepoint(const std::string &name, std::uint32_t identifier,
+IPerfEvent::createTracepoint(const std::string &name, bool exit_event,
                              std::int32_t process_id) {
 
   try {
-    return Ref(new TracepointPerfEvent(name, identifier, process_id));
+    return Ref(new TracepointPerfEvent(name, exit_event, process_id));
 
   } catch (const std::bad_alloc &) {
     return StringError::create("Memory allocation failure");
@@ -30,10 +30,10 @@ IPerfEvent::createTracepoint(const std::string &name, std::uint32_t identifier,
 
 StringErrorOr<IPerfEvent::Ref>
 IPerfEvent::createKprobe(const std::string &name, bool ret_probe,
-                         std::uint32_t identifier, std::int32_t process_id) {
+                         std::int32_t process_id) {
 
   try {
-    return Ref(new KprobePerfEvent(name, ret_probe, identifier, process_id));
+    return Ref(new KprobePerfEvent(name, ret_probe, process_id));
 
   } catch (const std::bad_alloc &) {
     return StringError::create("Memory allocation failure");
@@ -45,11 +45,9 @@ IPerfEvent::createKprobe(const std::string &name, bool ret_probe,
 
 StringErrorOr<IPerfEvent::Ref>
 IPerfEvent::createUprobe(const std::string &name, const std::string &path,
-                         bool ret_probe, std::uint32_t identifier,
-                         std::int32_t process_id) {
+                         bool ret_probe, std::int32_t process_id) {
   try {
-    return Ref(
-        new UprobePerfEvent(name, path, ret_probe, identifier, process_id));
+    return Ref(new UprobePerfEvent(name, path, ret_probe, process_id));
 
   } catch (const std::bad_alloc &) {
     return StringError::create("Memory allocation failure");

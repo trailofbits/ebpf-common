@@ -27,7 +27,8 @@ public:
 
   int fd() const;
 
-  bool read(std::vector<std::uint8_t> &buffer,
+  bool read(std::vector<std::uint8_t> &buffer, std::size_t &read_error_count,
+            std::size_t &lost_event_count,
             const std::chrono::milliseconds &timeout =
                 std::chrono::milliseconds(1000U));
 

@@ -26,7 +26,6 @@ struct BPFMapResult final {
   enum class ErrorCode {
     Success,
     NotFound,
-
     InvalidValueSize,
     InvalidProcessorIndex,
     Error

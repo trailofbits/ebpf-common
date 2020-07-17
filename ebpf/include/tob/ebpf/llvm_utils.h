@@ -32,4 +32,7 @@ std::unique_ptr<llvm::Module> createLLVMModule(llvm::LLVMContext &llvm_context,
 
 std::size_t getLLVMStructureSize(llvm::StructType *llvm_struct,
                                  llvm::Module *module);
+
+StringErrorOr<llvm::StructType *>
+getPtRegsStructure(llvm::Module &module, const std::string &structure_name);
 } // namespace tob::ebpf
