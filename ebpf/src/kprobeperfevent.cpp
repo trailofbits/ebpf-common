@@ -17,9 +17,7 @@
 
 namespace tob::ebpf {
 struct KprobePerfEvent::PrivateData final {
-  std::string name;
   bool ret_probe{false};
-  std::uint32_t identifier{0U};
   utils::UniqueFd event;
 };
 
@@ -29,19 +27,12 @@ KprobePerfEvent::Type KprobePerfEvent::type() const {
   return d->ret_probe ? Type::Kretprobe : Type::Kprobe;
 }
 
-const std::string &KprobePerfEvent::name() const { return d->name; }
-
-std::uint32_t KprobePerfEvent::identifier() const { return d->identifier; }
-
 int KprobePerfEvent::fd() const { return d->event.get(); }
 
 KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
-                                 std::uint32_t identifier,
                                  std::int32_t process_id)
     : d(new PrivateData) {
 
-  d->name = name;
-  d->identifier = identifier;
   d->ret_probe = ret_probe;
 
   struct perf_event_attr attr = {};
@@ -59,7 +50,7 @@ KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
 
   attr.type = probe_type_exp.takeValue();
 
-  if (ret_probe) {
+  if (d->ret_probe) {
     auto probe_return_bit_exp = getKprobeReturnBit();
     if (!probe_return_bit_exp.succeeded()) {
       throw probe_return_bit_exp.error();
@@ -80,7 +71,7 @@ KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
                                        cpu_index, -1, PERF_FLAG_FD_CLOEXEC));
 
   if (fd == -1) {
-    std::string event_type = ret_probe ? "exit" : "enter";
+    std::string event_type = d->ret_probe ? "exit" : "enter";
     throw StringError::create("Failed to create the " + event_type +
                               "Kprobe event. Errno: " + std::to_string(errno));
   }

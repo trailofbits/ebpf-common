@@ -24,15 +24,11 @@ public:
   virtual ~UprobePerfEvent() override;
 
   virtual Type type() const override;
-
-  virtual const std::string &name() const override;
-  virtual std::uint32_t identifier() const override;
   virtual int fd() const override;
 
 protected:
   UprobePerfEvent(const std::string &name, const std::string &path,
-                  bool ret_probe, std::uint32_t identifier,
-                  std::int32_t process_id);
+                  bool ret_probe, std::int32_t process_id);
 
   friend class IPerfEvent;
 };

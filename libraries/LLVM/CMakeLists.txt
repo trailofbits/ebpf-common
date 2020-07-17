@@ -10,19 +10,18 @@ cmake_minimum_required(VERSION 3.14.6)
 project("LLVM")
 
 function(ebpfCommonLibrariesLLVM)
-  find_package(LLVM REQUIRED)
+  find_package(LLVM REQUIRED CONFIG)
 
-  add_library(thirdparty_llvm INTERFACE)
-  target_link_libraries(thirdparty_llvm INTERFACE
-    LLVMMCJIT
-    LLVMBPFCodeGen
-    LLVMX86CodeGen
+  llvm_map_components_to_libnames(llvm_library_list
+    core
+    bpfcodegen
+    x86codegen
+    executionengine
+    mcjit
   )
 
-  # Ubuntu/Debian workarounds
-  if(EXISTS "/usr/include/llvm-${LLVM_VERSION_MAJOR}")
-    list(APPEND LLVM_INCLUDE_DIRS "/usr/include/llvm-${LLVM_VERSION_MAJOR}")
-  endif()
+  add_library(thirdparty_llvm INTERFACE)
+  target_link_libraries(thirdparty_llvm INTERFACE ${llvm_library_list})
 
   target_include_directories(thirdparty_llvm SYSTEM INTERFACE
     ${LLVM_INCLUDE_DIRS}
@@ -31,6 +30,13 @@ function(ebpfCommonLibrariesLLVM)
   target_compile_definitions(thirdparty_llvm INTERFACE
     ${LLVM_DEFINITIONS}
   )
+
+  # Ubuntu/Debian workaround
+  if(EXISTS "/usr/include/llvm-${LLVM_VERSION_MAJOR}")
+    target_include_directories(thirdparty_llvm SYSTEM INTERFACE
+      "/usr/include/llvm-${LLVM_VERSION_MAJOR}"
+    )
+  endif()
 endfunction()
 
 ebpfCommonLibrariesLLVM()

@@ -38,12 +38,8 @@ StringErrorOr<std::uint64_t> getSymbolFileOffset(const std::string &path,
 } // namespace
 
 struct UprobePerfEvent::PrivateData final {
-  std::string name;
-  std::string path;
   bool ret_probe{false};
-  std::uint32_t identifier{0U};
   utils::UniqueFd event;
-  std::uint64_t offset{0U};
 };
 
 UprobePerfEvent::~UprobePerfEvent() {}
@@ -52,21 +48,13 @@ UprobePerfEvent::Type UprobePerfEvent::type() const {
   return d->ret_probe ? Type::Uretprobe : Type::Uprobe;
 }
 
-const std::string &UprobePerfEvent::name() const { return d->name; }
-
-std::uint32_t UprobePerfEvent::identifier() const { return d->identifier; }
-
 int UprobePerfEvent::fd() const { return d->event.get(); }
 
 UprobePerfEvent::UprobePerfEvent(const std::string &name,
                                  const std::string &path, bool ret_probe,
-                                 std::uint32_t identifier,
                                  std::int32_t process_id)
     : d(new PrivateData) {
 
-  d->name = name;
-  d->path = path;
-  d->identifier = identifier;
   d->ret_probe = ret_probe;
 
   auto symbol_offset_exp = getSymbolFileOffset(path, name);
@@ -74,7 +62,7 @@ UprobePerfEvent::UprobePerfEvent(const std::string &name,
     throw symbol_offset_exp.error();
   }
 
-  d->offset = symbol_offset_exp.takeValue();
+  auto offset = symbol_offset_exp.takeValue();
 
   struct perf_event_attr attr = {};
   attr.sample_period = 1;
@@ -84,7 +72,7 @@ UprobePerfEvent::UprobePerfEvent(const std::string &name,
   auto path_ptr = path.c_str();
   std::memcpy(&attr.config1, &path_ptr, sizeof(path_ptr));
 
-  attr.config2 = static_cast<__u64>(d->offset);
+  attr.config2 = static_cast<__u64>(offset);
 
   auto probe_type_exp = getUprobeType();
   if (!probe_type_exp.succeeded()) {
@@ -93,7 +81,7 @@ UprobePerfEvent::UprobePerfEvent(const std::string &name,
 
   attr.type = probe_type_exp.takeValue();
 
-  if (ret_probe) {
+  if (d->ret_probe) {
     auto probe_return_bit_exp = getUprobeReturnBit();
     if (!probe_return_bit_exp.succeeded()) {
       throw probe_return_bit_exp.error();
@@ -114,7 +102,7 @@ UprobePerfEvent::UprobePerfEvent(const std::string &name,
                                        cpu_index, -1, PERF_FLAG_FD_CLOEXEC));
 
   if (fd == -1) {
-    std::string event_type = ret_probe ? "exit" : "enter";
+    std::string event_type = d->ret_probe ? "exit" : "enter";
     throw StringError::create("Failed to create the " + event_type +
                               " Uprobe event. Errno: " + std::to_string(errno));
   }

@@ -15,11 +15,13 @@
 #include <linux/unistd.h>
 #include <unistd.h>
 
+#include <tob/ebpf/tracepointdescriptor.h>
 #include <tob/utils/uniquefd.h>
 
 namespace tob::ebpf {
 namespace {
-const std::string kTracepointRootPath = "/sys/kernel/debug/tracing/events/";
+const std::string kTracepointRootPath =
+    "/sys/kernel/debug/tracing/events/syscalls/";
 
 bool configureTracepointEvent(const std::string &name, bool enable) {
   std::string switch_path = kTracepointRootPath + name + "/enable";
@@ -40,14 +42,12 @@ bool configureTracepointEvent(const std::string &name, bool enable) {
 
 struct TracepointPerfEvent::PrivateData final {
   std::string name;
-  std::uint32_t identifier{0U};
   utils::UniqueFd event;
 };
 
 TracepointPerfEvent::~TracepointPerfEvent() {
   if (!configureTracepointEvent(d->name, false)) {
-    std::cerr << "Failed to deactivate the following tracepoint: " << d->name
-              << "\n";
+    std::cerr << "Failed to deactivate tracepoint " << d->name << "\n";
   }
 }
 
@@ -55,18 +55,26 @@ TracepointPerfEvent::Type TracepointPerfEvent::type() const {
   return Type::Tracepoint;
 }
 
-const std::string &TracepointPerfEvent::name() const { return d->name; }
-
-std::uint32_t TracepointPerfEvent::identifier() const { return d->identifier; }
-
 int TracepointPerfEvent::fd() const { return d->event.get(); }
 
 TracepointPerfEvent::TracepointPerfEvent(const std::string &name,
-                                         std::uint32_t identifier,
+                                         bool exit_event,
                                          std::int32_t process_id)
     : d(new PrivateData) {
-  d->name = name;
-  d->identifier = identifier;
+
+  // Open the tracepoint
+  auto name_prefix = exit_event ? "sys_exit_" : "sys_enter_";
+  d->name = name_prefix + name;
+
+  auto tracepoint_desc_exp =
+      ebpf::TracepointDescriptor::create("syscalls", d->name);
+
+  if (!tracepoint_desc_exp.succeeded()) {
+    throw tracepoint_desc_exp.error();
+  }
+
+  auto tracepoint_desc = tracepoint_desc_exp.takeValue();
+  auto tracepoint_id = tracepoint_desc->eventIdentifier();
 
   int cpu_index;
   if (process_id != -1) {
@@ -78,7 +86,7 @@ TracepointPerfEvent::TracepointPerfEvent(const std::string &name,
   struct perf_event_attr perf_attr = {};
   perf_attr.type = PERF_TYPE_TRACEPOINT;
   perf_attr.size = sizeof(struct perf_event_attr);
-  perf_attr.config = d->identifier;
+  perf_attr.config = tracepoint_id;
   perf_attr.sample_period = 1;
   perf_attr.sample_type = PERF_SAMPLE_RAW;
   perf_attr.wakeup_events = 1;
@@ -94,9 +102,9 @@ TracepointPerfEvent::TracepointPerfEvent(const std::string &name,
 
   d->event.reset(fd);
 
-  if (!configureTracepointEvent(name, true)) {
+  if (!configureTracepointEvent(d->name, true)) {
     throw StringError::create("Failed to activate the following tracepoint: " +
-                              name);
+                              d->name);
   }
 }
 } // namespace tob::ebpf

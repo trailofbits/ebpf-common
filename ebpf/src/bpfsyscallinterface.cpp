@@ -97,6 +97,13 @@ llvm::Value *BPFSyscallInterface::mapUpdateElem(int map_fd, llvm::Value *value,
       {map_value, key, value, flags_value});
 }
 
+llvm::Value *BPFSyscallInterface::mapDeleteElem(int map_fd, llvm::Value *key) {
+  auto map_value = pseudoMapFd(map_fd);
+
+  return assembleSystemCall<BPF_FUNC_map_delete_elem>(
+      d->builder, d->builder.getInt64Ty(), {map_value, key});
+}
+
 llvm::Value *BPFSyscallInterface::probeRead(llvm::Value *dest,
                                             llvm::Value *size,
                                             llvm::Value *src) {
@@ -120,9 +127,10 @@ llvm::Value *BPFSyscallInterface::getSmpProcessorId() {
 
 llvm::Value *BPFSyscallInterface::perfEventOutput(llvm::Value *context,
                                                   int map_fd,
-                                                  std::uint64_t flags,
                                                   llvm::Value *data_ptr,
                                                   std::uint32_t data_size) {
+
+  auto flags = std::numeric_limits<std::uint32_t>::max();
 
   auto map_value = pseudoMapFd(map_fd);
   auto flags_value = d->builder.getInt64(flags);
@@ -131,6 +139,11 @@ llvm::Value *BPFSyscallInterface::perfEventOutput(llvm::Value *context,
   return assembleSystemCall<BPF_FUNC_perf_event_output>(
       d->builder, d->builder.getInt64Ty(),
       {context, map_value, flags_value, data_ptr, size_value});
+}
+
+llvm::Value *BPFSyscallInterface::getCurrentCgroupId() {
+  return assembleSystemCall<BPF_FUNC_get_current_cgroup_id>(
+      d->builder, d->builder.getInt64Ty(), {});
 }
 
 void BPFSyscallInterface::overrideReturn(llvm::Value *context,

@@ -18,7 +18,6 @@ function(ebpfCommonMain)
   generateSettingsTargets()
 
   add_subdirectory("libraries")
-
   add_subdirectory("ebpf")
   add_subdirectory("error")
   add_subdirectory("utils")

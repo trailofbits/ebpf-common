@@ -31,25 +31,22 @@ public:
   };
 
   static StringErrorOr<Ref> createTracepoint(const std::string &name,
-                                             std::uint32_t identifier,
+                                             bool exit_event,
                                              std::int32_t process_id = -1);
 
   static StringErrorOr<Ref> createKprobe(const std::string &name,
                                          bool ret_probe,
-                                         std::uint32_t identifier,
                                          std::int32_t process_id = -1);
 
-  static StringErrorOr<Ref>
-  createUprobe(const std::string &name, const std::string &path, bool ret_probe,
-               std::uint32_t identifier, std::int32_t process_id = -1);
+  static StringErrorOr<Ref> createUprobe(const std::string &name,
+                                         const std::string &path,
+                                         bool ret_probe,
+                                         std::int32_t process_id = -1);
 
   IPerfEvent() = default;
   virtual ~IPerfEvent() = default;
 
   virtual Type type() const = 0;
-
-  virtual const std::string &name() const = 0;
-  virtual std::uint32_t identifier() const = 0;
   virtual int fd() const = 0;
 
   IPerfEvent(const IPerfEvent &) = delete;

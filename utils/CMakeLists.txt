@@ -16,6 +16,9 @@ function(ebpfCommonUtils)
     include/tob/utils/uniquefd.h
     src/uniquefd.cpp
 
+    include/tob/utils/architecture.h
+    src/architecture.cpp
+
     include/tob/utils/uniquemappedmemory.h
     src/uniquemappedmemory.cpp
 

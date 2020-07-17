@@ -148,7 +148,8 @@ TracepointDescriptor::readFile(const std::string &path) {
   // We can't use seek on the tracepoint format file
   std::ifstream input_file(path, std::ios::in | std::ios::binary);
   if (!input_file) {
-    return StringError::create("Failed to open the file");
+    return StringError::create(
+        "Failed to open the tracepoint descriptor file: " + path);
   }
 
   std::string output;
