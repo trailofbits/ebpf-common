@@ -88,9 +88,9 @@ TEST_CASE("Value lifetime", "[ErrorOr]") {
       REQUIRE(dealloc_count == 0U);
     }
 
-    auto L_moveObject = [](TestErrorOr original) -> TestErrorOr {
-      TestErrorOr moved1 = std::move(original);
-      original = {};
+    auto L_moveObject = [](TestErrorOr orig_value) -> TestErrorOr {
+      TestErrorOr moved1 = std::move(orig_value);
+      orig_value = {};
 
       TestErrorOr moved2(std::move(moved1));
       moved1 = {};

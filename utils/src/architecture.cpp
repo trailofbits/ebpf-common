@@ -45,6 +45,9 @@ StringErrorOr<std::size_t> getProcessorBitness() {
   case Architecture::x64:
   case Architecture::AArch64:
     return 64U;
+
+  default:
+    throw std::logic_error("Invalid or unsupported architecture");
   }
 }
 } // namespace tob::utils
