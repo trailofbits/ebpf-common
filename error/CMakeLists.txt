@@ -12,7 +12,6 @@ project("error")
 function(ebpfCommonError)
   add_library(error INTERFACE)
   target_include_directories(error INTERFACE include)
-  target_link_libraries(error INTERFACE cxx_target_settings)
 endfunction()
 
 ebpfCommonError()
