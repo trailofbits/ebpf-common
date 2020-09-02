@@ -45,6 +45,8 @@ function(generateEbpfCommonTests)
   )
 
   target_link_libraries(ebpf-common-tests PRIVATE
+    cxx_target_settings
+
     thirdparty_catch2
 
     ebpf

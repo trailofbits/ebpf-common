@@ -52,12 +52,15 @@ function(ebpfCommonEbpf)
 
   target_include_directories(ebpf PUBLIC include)
 
-  target_link_libraries(ebpf PUBLIC
-    thirdparty_llvm
-    thirdparty_libbpf
+  target_link_libraries(ebpf
+    PRIVATE
+      cxx_target_settings
 
-    error
-    utils
+    PUBLIC
+      thirdparty_llvm
+      thirdparty_libbpf
+      error
+      utils
   )
 endfunction()
 

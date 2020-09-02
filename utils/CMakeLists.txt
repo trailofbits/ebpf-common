@@ -28,7 +28,14 @@ function(ebpfCommonUtils)
   )
 
   target_include_directories(utils PUBLIC include)
-  target_link_libraries(utils PUBLIC error)
+
+  target_link_libraries(utils
+    PRIVATE
+      cxx_target_settings
+
+    PUBLIC
+      error
+  )
 endfunction()
 
 ebpfCommonUtils()
