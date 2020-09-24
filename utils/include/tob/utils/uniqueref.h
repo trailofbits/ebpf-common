@@ -41,6 +41,8 @@ public:
   UniqueRef &operator=(Reference new_ref) {
     releaseReference();
     reset(new_ref);
+
+    return *this;
   }
 
   Reference release() noexcept {
