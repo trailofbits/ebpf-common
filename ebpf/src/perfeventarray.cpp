@@ -165,7 +165,6 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
   }
 
   d->perf_event_array_map = perf_event_array_map_exp.takeValue();
-
   d->processor_count = static_cast<std::size_t>(get_nprocs_conf());
 
   for (auto cpu_index = 0U; cpu_index < d->processor_count; ++cpu_index) {
@@ -180,6 +179,7 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
 
     auto err =
         d->perf_event_array_map->set(cpu_index, perf_event_output.fd.get());
+
     if (!err.succeeded()) {
       throw StringError::create("Failed to populate the perf event array map");
     }
@@ -188,7 +188,6 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
     poll_fd.fd = perf_event_output.fd.get();
     poll_fd.events = POLLIN;
     d->perf_event_output_pollfd.push_back(std::move(poll_fd));
-
     d->perf_event_output_list.insert({cpu_index, std::move(perf_event_output)});
   }
 }
