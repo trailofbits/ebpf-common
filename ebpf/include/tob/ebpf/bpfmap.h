@@ -8,6 +8,7 @@
 
 #pragma once
 
+#include <tob/ebpf/cpu.h>
 #include <tob/error/error.h>
 
 #include <cstring>
@@ -106,9 +107,6 @@ private:
 
 template <enum bpf_map_type map_type, typename KeyType>
 struct BPFMap<map_type, KeyType>::PrivateData final {
-  PrivateData() { std::memset(&map_attr, 0, sizeof(map_attr)); }
-
-  union bpf_attr map_attr;
   std::size_t value_size{0U};
   int fd{-1};
 };
@@ -149,14 +147,12 @@ BPFMapErrorCode
 BPFMap<map_type, KeyType>::set(const KeyType &key,
                                const std::vector<std::uint8_t> &value) {
 
-  auto processor_count = static_cast<std::size_t>(get_nprocs_conf());
-
   auto value_size = d->value_size;
   if (map_type == BPF_MAP_TYPE_PERCPU_ARRAY ||
       map_type == BPF_MAP_TYPE_PERCPU_HASH ||
       map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH) {
 
-    value_size *= processor_count;
+    value_size *= getPossibleProcessorCount();
   }
 
   if (value.size() != value_size) {
@@ -193,29 +189,25 @@ template <enum bpf_map_type map_type, typename KeyType>
 BPFMapErrorCode BPFMap<map_type, KeyType>::get(std::vector<std::uint8_t> &value,
                                                const KeyType &key) {
 
-  auto processor_count = static_cast<std::size_t>(get_nprocs_conf());
-
   auto value_size = d->value_size;
+
   if (map_type == BPF_MAP_TYPE_PERCPU_ARRAY ||
       map_type == BPF_MAP_TYPE_PERCPU_HASH ||
       map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH) {
 
-    value_size *= processor_count;
+    value_size *= getPossibleProcessorCount();
   }
 
   value.resize(value_size);
-  return get(value.data(), key);
-}
 
-template <enum bpf_map_type map_type, typename KeyType>
-BPFMapErrorCode BPFMap<map_type, KeyType>::get(std::uint8_t *value,
-                                               const KeyType &key) {
   union bpf_attr attr = {};
   attr.map_fd = static_cast<__u32>(d->fd);
 
   auto key_ptr = &key;
   std::memcpy(&attr.key, &key_ptr, sizeof(attr.key));
-  std::memcpy(&attr.value, &value, sizeof(attr.value));
+
+  auto value_ptr = value.data();
+  std::memcpy(&attr.value, &value_ptr, sizeof(attr.value));
 
   auto err =
       ::syscall(__NR_bpf, BPF_MAP_LOOKUP_ELEM, &attr, sizeof(union bpf_attr));
@@ -266,13 +258,13 @@ BPFMap<map_type, KeyType>::BPFMap(std::size_t value_size,
     : d(new PrivateData) {
   d->value_size = value_size;
 
-  d->map_attr.map_type = map_type;
-  d->map_attr.key_size = sizeof(KeyType);
-  d->map_attr.value_size = static_cast<__u32>(d->value_size);
-  d->map_attr.max_entries = static_cast<__u32>(entry_count);
+  union bpf_attr attr {};
+  attr.map_type = map_type;
+  attr.key_size = sizeof(KeyType);
+  attr.value_size = static_cast<__u32>(d->value_size);
+  attr.max_entries = static_cast<__u32>(entry_count);
 
-  auto fd =
-      ::syscall(__NR_bpf, BPF_MAP_CREATE, &d->map_attr, sizeof(union bpf_attr));
+  auto fd = ::syscall(__NR_bpf, BPF_MAP_CREATE, &attr, sizeof(union bpf_attr));
 
   if (fd < 0) {
     throw StringError::create("Failed to create the map");

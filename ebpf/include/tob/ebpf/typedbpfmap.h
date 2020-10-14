@@ -82,7 +82,7 @@ TypedBPFMap<map_type, KeyType, ValueType>::set(const KeyType &key,
       map_type == BPF_MAP_TYPE_PERCPU_ARRAY ||
       map_type == BPF_MAP_TYPE_LRU_PERCPU_HASH) {
 
-    slot_count = static_cast<std::size_t>(get_nprocs_conf());
+    slot_count = getPossibleProcessorCount();
     buffer_size *= slot_count;
   }
 

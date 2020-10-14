@@ -16,6 +16,9 @@ function(ebpfCommonEbpf)
     include/tob/ebpf/typedbpfmap.h
     include/tob/ebpf/structure.h
 
+    include/tob/ebpf/cpu.h
+    src/cpu.cpp
+
     include/tob/ebpf/iperfevent.h
     src/iperfevent.cpp
 
