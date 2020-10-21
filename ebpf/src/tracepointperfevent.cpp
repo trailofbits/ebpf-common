@@ -20,11 +20,12 @@
 
 namespace tob::ebpf {
 namespace {
-const std::string kTracepointRootPath =
-    "/sys/kernel/debug/tracing/events/syscalls/";
+const std::string kTracepointRootPath = "/sys/kernel/debug/tracing/events/";
 
-bool configureTracepointEvent(const std::string &name, bool enable) {
-  std::string switch_path = kTracepointRootPath + name + "/enable";
+bool configureTracepointEvent(const std::string &category,
+                              const std::string &name, bool enable) {
+  std::string switch_path =
+      kTracepointRootPath + category + "/" + name + "/enable";
 
   std::fstream f(switch_path, std::ios::out | std::ios::binary);
   if (!f) {
@@ -41,12 +42,13 @@ bool configureTracepointEvent(const std::string &name, bool enable) {
 } // namespace
 
 struct TracepointPerfEvent::PrivateData final {
+  std::string category;
   std::string name;
   utils::UniqueFd event;
 };
 
 TracepointPerfEvent::~TracepointPerfEvent() {
-  if (!configureTracepointEvent(d->name, false)) {
+  if (!configureTracepointEvent(d->category, d->name, false)) {
     std::cerr << "Failed to deactivate tracepoint " << d->name << "\n";
   }
 }
@@ -57,17 +59,17 @@ TracepointPerfEvent::Type TracepointPerfEvent::type() const {
 
 int TracepointPerfEvent::fd() const { return d->event.get(); }
 
-TracepointPerfEvent::TracepointPerfEvent(const std::string &name,
-                                         bool exit_event,
+TracepointPerfEvent::TracepointPerfEvent(const std::string &category,
+                                         const std::string &name,
                                          std::int32_t process_id)
     : d(new PrivateData) {
 
   // Open the tracepoint
-  auto name_prefix = exit_event ? "sys_exit_" : "sys_enter_";
-  d->name = name_prefix + name;
+  d->category = category;
+  d->name = name;
 
   auto tracepoint_desc_exp =
-      ebpf::TracepointDescriptor::create("syscalls", d->name);
+      ebpf::TracepointDescriptor::create(category, d->name);
 
   if (!tracepoint_desc_exp.succeeded()) {
     throw tracepoint_desc_exp.error();
@@ -102,9 +104,9 @@ TracepointPerfEvent::TracepointPerfEvent(const std::string &name,
 
   d->event.reset(fd);
 
-  if (!configureTracepointEvent(d->name, true)) {
+  if (!configureTracepointEvent(d->category, d->name, true)) {
     throw StringError::create("Failed to activate the following tracepoint: " +
-                              d->name);
+                              d->category + "/" + d->name);
   }
 }
 } // namespace tob::ebpf
