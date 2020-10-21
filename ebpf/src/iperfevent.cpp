@@ -14,11 +14,11 @@
 
 namespace tob::ebpf {
 StringErrorOr<IPerfEvent::Ref>
-IPerfEvent::createTracepoint(const std::string &name, bool exit_event,
-                             std::int32_t process_id) {
+IPerfEvent::createTracepoint(const std::string &category,
+                             const std::string &name, std::int32_t process_id) {
 
   try {
-    return Ref(new TracepointPerfEvent(name, exit_event, process_id));
+    return Ref(new TracepointPerfEvent(category, name, process_id));
 
   } catch (const std::bad_alloc &) {
     return StringError::create("Memory allocation failure");

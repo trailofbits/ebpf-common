@@ -30,8 +30,8 @@ public:
     Tracepoint
   };
 
-  static StringErrorOr<Ref> createTracepoint(const std::string &name,
-                                             bool exit_event,
+  static StringErrorOr<Ref> createTracepoint(const std::string &category,
+                                             const std::string &name,
                                              std::int32_t process_id = -1);
 
   static StringErrorOr<Ref> createKprobe(const std::string &name,

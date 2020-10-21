@@ -27,7 +27,7 @@ public:
   virtual int fd() const override;
 
 protected:
-  TracepointPerfEvent(const std::string &name, bool exit_event,
+  TracepointPerfEvent(const std::string &category, const std::string &name,
                       std::int32_t process_id);
 
   friend class IPerfEvent;

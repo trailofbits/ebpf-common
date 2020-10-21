@@ -223,12 +223,12 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
 
   if (ioctl(perf_event.fd(), PERF_EVENT_IOC_SET_BPF, output.get()) < 0) {
     return StringError::create(
-        "Failed to attach the BPF program to the perf event: " +
+        "Failed to attach the BPF program to the perf event. Errno: " +
         std::to_string(errno));
   }
 
   if (ioctl(perf_event.fd(), PERF_EVENT_IOC_ENABLE, 0) < 0) {
-    return StringError::create("Failed to enable the perf event: " +
+    return StringError::create("Failed to enable the perf event. Errno: " +
                                std::to_string(errno));
   }
 
