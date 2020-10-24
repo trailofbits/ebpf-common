@@ -21,24 +21,6 @@
 namespace tob::ebpf {
 namespace {
 const std::string kTracepointRootPath = "/sys/kernel/debug/tracing/events/";
-
-bool configureTracepointEvent(const std::string &category,
-                              const std::string &name, bool enable) {
-  std::string switch_path =
-      kTracepointRootPath + category + "/" + name + "/enable";
-
-  std::fstream f(switch_path, std::ios::out | std::ios::binary);
-  if (!f) {
-    return false;
-  }
-
-  f << (enable ? '1' : '0');
-  if (!f) {
-    return false;
-  }
-
-  return true;
-}
 } // namespace
 
 struct TracepointPerfEvent::PrivateData final {
@@ -47,11 +29,7 @@ struct TracepointPerfEvent::PrivateData final {
   utils::UniqueFd event;
 };
 
-TracepointPerfEvent::~TracepointPerfEvent() {
-  if (!configureTracepointEvent(d->category, d->name, false)) {
-    std::cerr << "Failed to deactivate tracepoint " << d->name << "\n";
-  }
-}
+TracepointPerfEvent::~TracepointPerfEvent() {}
 
 TracepointPerfEvent::Type TracepointPerfEvent::type() const {
   return Type::Tracepoint;
@@ -103,10 +81,5 @@ TracepointPerfEvent::TracepointPerfEvent(const std::string &category,
   }
 
   d->event.reset(fd);
-
-  if (!configureTracepointEvent(d->category, d->name, true)) {
-    throw StringError::create("Failed to activate the following tracepoint: " +
-                              d->category + "/" + d->name);
-  }
 }
 } // namespace tob::ebpf
