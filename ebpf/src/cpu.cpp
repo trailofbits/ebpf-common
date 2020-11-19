@@ -31,6 +31,10 @@ std::size_t getPossibleProcessorCountHelper() {
                              kPossibleCpuPseudoFile);
   }
 
+  if (cpu_info == "0") {
+    return 1U;
+  }
+
   auto separator = cpu_info.find('-');
   if (separator == std::string::npos) {
     throw std::runtime_error(
