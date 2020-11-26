@@ -29,6 +29,8 @@ function(ebpfCommonLibrariesLLVM)
 
   target_compile_definitions(thirdparty_llvm INTERFACE
     ${LLVM_DEFINITIONS}
+    LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR}
+    LLVM_VERSION_MINOR=${LLVM_VERSION_MINOR}
   )
 
   # Ubuntu/Debian workaround
