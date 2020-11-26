@@ -37,7 +37,12 @@ assembleSystemCall(llvm::IRBuilder<> &builder,
       builder.CreateIntToPtr(builder.getInt64(syscall_identifier),
                              llvm::PointerType::getUnqual(function_type));
 
+#if LLVM_VERSION_MAJOR < 11
   return builder.CreateCall(function, argument_list);
+#else
+  return builder.CreateCall(llvm::FunctionCallee(function_type, function),
+                            argument_list);
+#endif
 }
 } // namespace
 
