@@ -12,12 +12,25 @@ project("LLVM")
 function(ebpfCommonLibrariesLLVM)
   find_package(LLVM REQUIRED CONFIG)
 
-  llvm_map_components_to_libnames(llvm_library_list
+  set(llvm_component_list
     core
     bpfcodegen
-    x86codegen
     executionengine
     mcjit
+  )
+ 
+  if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
+    list(APPEND llvm_component_list x86codegen)
+
+  elseif("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "aarch64")
+    list(APPEND llvm_component_list aarch64codegen)
+
+  else()
+    message(FATAL_ERROR "Unsupported architecture: ${CMAKE_SYSTEM_PROCESSOR}")
+  endif()
+
+  llvm_map_components_to_libnames(llvm_library_list
+    ${llvm_component_list}
   )
 
   add_library(thirdparty_llvm INTERFACE)
