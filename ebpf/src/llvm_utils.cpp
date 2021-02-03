@@ -64,21 +64,18 @@ getPtRegsStructure(llvm::Module &module, const std::string &structure_name) {
   switch (architecture) {
   case utils::Architecture::x86:
     type_list = std::vector<llvm::Type *>(17U, llvm::Type::getInt32Ty(context));
-
     break;
 
   case utils::Architecture::AArch32:
     type_list = std::vector<llvm::Type *>(18U, llvm::Type::getInt32Ty(context));
-
     break;
 
   case utils::Architecture::x64:
     type_list = std::vector<llvm::Type *>(21U, llvm::Type::getInt64Ty(context));
-
     break;
 
   case utils::Architecture::AArch64:
-    // pt_regs.regs[31]
+    // pt_regs.regs, from 0 to 30
     type_list = std::vector<llvm::Type *>(31U, llvm::Type::getInt64Ty(context));
 
     // pt_regs.sp
@@ -88,23 +85,6 @@ getPtRegsStructure(llvm::Module &module, const std::string &structure_name) {
     type_list.push_back(llvm::Type::getInt64Ty(context));
 
     // pt_regs.pstate
-    type_list.push_back(llvm::Type::getInt64Ty(context));
-
-    // pt_regs.orig_x0
-    type_list.push_back(llvm::Type::getInt64Ty(context));
-
-    // pt_regs.unused2/syscallno (order depends on endianness)
-    type_list.push_back(llvm::Type::getInt32Ty(context));
-    type_list.push_back(llvm::Type::getInt32Ty(context));
-
-    // pt_regs.orig_addr_limit
-    type_list.push_back(llvm::Type::getInt64Ty(context));
-
-    // pt_regs.pmr_save
-    type_list.push_back(llvm::Type::getInt64Ty(context));
-
-    // pt_regs.stackframe[2]
-    type_list.push_back(llvm::Type::getInt64Ty(context));
     type_list.push_back(llvm::Type::getInt64Ty(context));
 
     break;
