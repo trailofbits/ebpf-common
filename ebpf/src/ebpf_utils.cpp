@@ -34,7 +34,6 @@ StringErrorOr<BPFProgramMap> compileModule(llvm::Module &module) {
       std::make_unique<llvm::EngineBuilder>(std::move(module_copy));
 
   exec_engine_builder->setMArch("bpf");
-  exec_engine_builder->setUseOrcMCJITReplacement(false);
   exec_engine_builder->setOptLevel(llvm::CodeGenOpt::Default);
 
   std::string builder_err_output;
