@@ -9,12 +9,18 @@
 #include <cstring>
 #include <ctype.h>
 #include <fstream>
+#include <iostream>
 #include <sstream>
 
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <elf.h>
+
+#if __has_include("sys/auxv.h")
+#include <sys/auxv.h>
+#endif
 
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -26,6 +32,188 @@ namespace tob::ebpf {
 const std::string kLinuxVersionHeaderPath{"/usr/include/linux/version.h"};
 const std::string kDefinitionName{"LINUX_VERSION_CODE"};
 const std::string kProgramLicense{"GPL"};
+
+namespace {
+StringErrorOr<std::uint32_t> getVersionCodeFromVersionHeader() {
+  std::string header_contents;
+
+  {
+    std::fstream linux_version_header(kLinuxVersionHeaderPath);
+    if (!linux_version_header) {
+      return StringError::create(
+          "Failed to open the Linux kernel version header: " +
+          kLinuxVersionHeaderPath);
+    }
+
+    std::stringstream buffer;
+    buffer << linux_version_header.rdbuf();
+    if (!linux_version_header) {
+      return StringError::create(
+          "Failed to read the Linux kernel version header: " +
+          kLinuxVersionHeaderPath);
+    }
+
+    header_contents = buffer.str();
+  }
+
+  auto definition_index = header_contents.find(kDefinitionName);
+  if (definition_index == std::string::npos) {
+    return StringError::create("Failed to locate the LINUX_VERSION_CODE "
+                               "definition in the Linux kernel version header");
+  }
+
+  auto base_index = definition_index + kDefinitionName.size() + 1;
+  if (base_index >= header_contents.size()) {
+    return StringError::create("Malformed Linux kernel version header");
+  }
+
+  std::size_t version_code_index{0U};
+
+  while (base_index < header_contents.size()) {
+    auto current_char = header_contents.at(base_index);
+
+    if (current_char == '\n' || current_char == '\x00') {
+      break;
+    }
+
+    if (std::isdigit(current_char)) {
+      version_code_index = base_index;
+      break;
+    }
+
+    ++base_index;
+  }
+
+  if (version_code_index == 0U) {
+    return StringError::create(
+        "Failed to locate the Linux kernel version code inside the header");
+  }
+
+  const char *version_code_ptr = header_contents.c_str() + version_code_index;
+
+  char *field_terminator{nullptr};
+  auto version_code = std::strtoul(version_code_ptr, &field_terminator, 10);
+  if (field_terminator == nullptr || *field_terminator != '\n') {
+    return StringError::create("Failed to parse the Linux kernel version code");
+  }
+
+  return static_cast<std::uint32_t>(version_code);
+}
+
+template <typename T> const T *alignPointer(const T *ptr) {
+  static const std::uintptr_t kAlignment{4U};
+
+  std::uintptr_t address;
+  std::memcpy(&address, &ptr, sizeof(address));
+
+  address = (address + (kAlignment - 1)) & -kAlignment;
+
+  const T *aligned_ptr;
+  std::memcpy(&aligned_ptr, &address, sizeof(aligned_ptr));
+
+  return aligned_ptr;
+}
+
+#if __has_include("sys/auxv.h")
+StringErrorOr<std::uintptr_t> getVdsoBaseAddress() {
+  auto address = static_cast<std::uintptr_t>(getauxval(AT_SYSINFO_EHDR));
+  if (address == 0) {
+    return StringError::create("Failed to locate the vDSO base address");
+  }
+
+  return address;
+}
+
+#else
+StringErrorOr<std::uintptr_t> getVdsoBaseAddress() {
+  std::ifstream maps_file("/proc/self/maps");
+  if (!maps_file) {
+    return StringError::create("Failed to open /proc/self/maps");
+  }
+
+  std::uintptr_t address{};
+
+  for (std::string line; std::getline(maps_file, line);) {
+    if (line.find("[vdso]") != std::string::npos) {
+      auto delimiter = line.find("-");
+      if (delimiter == std::string::npos) {
+        return StringError::create("Failed to parse /proc/self/maps");
+      }
+
+      line.resize(delimiter);
+
+      char *null_term_ptr{nullptr};
+      address = static_cast<std::uintptr_t>(
+          std::strtoull(line.c_str(), &null_term_ptr, 16));
+      if (address == 0 || null_term_ptr == nullptr || *null_term_ptr != 0) {
+        return StringError::create("Failed to parse /proc/self/maps");
+      }
+    }
+  }
+
+  return address;
+}
+#endif
+
+StringErrorOr<std::uint32_t> getVersionCodeFromVdso() {
+  auto integer_addr_res = getVdsoBaseAddress();
+  if (!integer_addr_res.succeeded()) {
+    return integer_addr_res.error();
+  }
+
+  auto integer_addr = integer_addr_res.takeValue();
+
+  const std::uint8_t *header_ptr{nullptr};
+  std::memcpy(&header_ptr, &integer_addr, sizeof(header_ptr));
+
+  Elf64_Ehdr elf_header;
+  std::memcpy(&elf_header, header_ptr, sizeof(elf_header));
+
+  const auto section_header_size = elf_header.e_shentsize;
+
+  for (Elf64_Half section_index{0}; section_index < elf_header.e_shnum;
+       ++section_index) {
+
+    auto section_header_ptr =
+        header_ptr + elf_header.e_shoff + (section_index * section_header_size);
+
+    Elf64_Shdr section_header;
+    std::memcpy(&section_header, section_header_ptr, sizeof(section_header));
+
+    if (section_header.sh_type != SHT_NOTE) {
+      continue;
+    }
+
+    auto start_ptr = header_ptr + section_header.sh_offset;
+    auto end_ptr = start_ptr + section_header.sh_size;
+
+    for (auto ptr = start_ptr; ptr < end_ptr;) {
+      Elf64_Nhdr note_header;
+      std::memcpy(&note_header, ptr, sizeof(note_header));
+      ptr += sizeof(note_header);
+
+      std::string name(note_header.n_namesz - 1, '\0');
+      std::memcpy(&name[0], ptr, name.size());
+      ptr = alignPointer(ptr + note_header.n_namesz);
+
+      std::vector<std::uint8_t> description(note_header.n_descsz, 0);
+      std::memcpy(description.data(), ptr, description.size());
+      ptr = alignPointer(ptr + note_header.n_descsz);
+
+      if (name == "Linux" && description.size() == 4 &&
+          note_header.n_type == 0) {
+        std::uint32_t linux_version;
+        std::memcpy(&linux_version, description.data(), sizeof(linux_version));
+
+        return linux_version;
+      }
+    }
+  }
+
+  return StringError::create(
+      "Failed to locate the linux version code note in the vDSO module");
+}
+} // namespace
 
 StringErrorOr<BPFProgramMap> compileModule(llvm::Module &module) {
   auto module_copy = llvm::CloneModule(module);
@@ -235,68 +423,14 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
 }
 
 StringErrorOr<std::uint32_t> getLinuxKernelVersionCode() {
-  std::string header_contents;
-
-  {
-    std::fstream linux_version_header(kLinuxVersionHeaderPath);
-    if (!linux_version_header) {
-      return StringError::create(
-          "Failed to open the Linux kernel version header: " +
-          kLinuxVersionHeaderPath);
-    }
-
-    std::stringstream buffer;
-    buffer << linux_version_header.rdbuf();
-    if (!linux_version_header) {
-      return StringError::create(
-          "Failed to read the Linux kernel version header: " +
-          kLinuxVersionHeaderPath);
-    }
-
-    header_contents = buffer.str();
+  auto version_exp = getVersionCodeFromVdso();
+  if (version_exp.succeeded()) {
+    return version_exp;
   }
 
-  auto definition_index = header_contents.find(kDefinitionName);
-  if (definition_index == std::string::npos) {
-    return StringError::create("Failed to locate the LINUX_VERSION_CODE "
-                               "definition in the Linux kernel version header");
-  }
+  std::cerr << version_exp.error().message() << "\nAttempting to parse "
+            << kLinuxVersionHeaderPath << "...\n";
 
-  auto base_index = definition_index + kDefinitionName.size() + 1;
-  if (base_index >= header_contents.size()) {
-    return StringError::create("Malformed Linux kernel version header");
-  }
-
-  std::size_t version_code_index{0U};
-
-  while (base_index < header_contents.size()) {
-    auto current_char = header_contents.at(base_index);
-
-    if (current_char == '\n' || current_char == '\x00') {
-      break;
-    }
-
-    if (std::isdigit(current_char)) {
-      version_code_index = base_index;
-      break;
-    }
-
-    ++base_index;
-  }
-
-  if (version_code_index == 0U) {
-    return StringError::create(
-        "Failed to locate the Linux kernel version code inside the header");
-  }
-
-  const char *version_code_ptr = header_contents.c_str() + version_code_index;
-
-  char *field_terminator{nullptr};
-  auto version_code = std::strtoul(version_code_ptr, &field_terminator, 10);
-  if (field_terminator == nullptr || *field_terminator != '\n') {
-    return StringError::create("Failed to parse the Linux kernel version code");
-  }
-
-  return static_cast<std::uint32_t>(version_code);
+  return getVersionCodeFromVersionHeader();
 }
 } // namespace tob::ebpf
