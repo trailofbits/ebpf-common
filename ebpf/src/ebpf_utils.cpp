@@ -14,9 +14,12 @@
 
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
-#include <sys/auxv.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+
+#if __has_include("sys/auxv.h")
+#include <sys/auxv.h>
+#endif
 
 #include <llvm/ExecutionEngine/MCJIT.h>
 #include <llvm/Transforms/Utils/Cloning.h>
@@ -110,8 +113,54 @@ template <typename T> const T *alignPointer(const T *ptr) {
   return aligned_ptr;
 }
 
+#if __has_include("sys/auxv.h")
+StringErrorOr<std::uintptr_t> getVdsoBaseAddress() {
+  auto address = static_cast<std::uintptr_t>(getauxval(AT_SYSINFO_EHDR));
+  if (address == 0) {
+    return StringError::create("Failed to locate the vDSO base address");
+  }
+
+  return address;
+}
+
+#else
+StringErrorOr<std::uintptr_t> getVdsoBaseAddress() {
+  std::ifstream maps_file("/proc/self/maps");
+  if (!maps_file) {
+    return StringError::create("Failed to open /proc/self/maps");
+  }
+
+  std::uintptr_t address{};
+
+  for (std::string line; std::getline(maps_file, line);) {
+    if (line.find("[vdso]") != std::string::npos) {
+      auto delimiter = line.find("-");
+      if (delimiter == std::string::npos) {
+        return StringError::create("Failed to parse /proc/self/maps");
+      }
+
+      line.resize(delimiter);
+
+      char *null_term_ptr{nullptr};
+      address = static_cast<std::uintptr_t>(
+          std::strtoull(line.c_str(), &null_term_ptr, 16));
+      if (address == 0 || null_term_ptr == nullptr || *null_term_ptr != 0) {
+        return StringError::create("Failed to parse /proc/self/maps");
+      }
+    }
+  }
+
+  return address;
+}
+#endif
+
 StringErrorOr<std::uint32_t> getVersionCodeFromVdso() {
-  auto integer_addr = getauxval(AT_SYSINFO_EHDR);
+  auto integer_addr_res = getVdsoBaseAddress();
+  if (!integer_addr_res.succeeded()) {
+    return integer_addr_res.error();
+  }
+
+  auto integer_addr = integer_addr_res.takeValue();
 
   const std::uint8_t *header_ptr{nullptr};
   std::memcpy(&header_ptr, &integer_addr, sizeof(header_ptr));
@@ -300,7 +349,6 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
     }
 
     linux_version = linux_version_exp.takeValue();
-    std::cout << std::hex << linux_version << std::endl;
     break;
   }
 
