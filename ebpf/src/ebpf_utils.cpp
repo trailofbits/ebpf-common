@@ -16,6 +16,7 @@
 #include <linux/unistd.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
+#include <elf.h>
 
 #if __has_include("sys/auxv.h")
 #include <sys/auxv.h>
