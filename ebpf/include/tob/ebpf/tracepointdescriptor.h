@@ -18,7 +18,7 @@
 namespace tob::ebpf {
 class TracepointDescriptor final {
 public:
-  enum class PathType { Root, EnableSwitch, Format, EventIdentifier };
+  enum class PathType { Root, Format, EventIdentifier };
   using PathMap = std::unordered_map<PathType, std::string>;
 
   using Ref = std::shared_ptr<TracepointDescriptor>;
