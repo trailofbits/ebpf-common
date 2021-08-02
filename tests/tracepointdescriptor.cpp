@@ -30,7 +30,6 @@ SCENARIO(
         // clang-format off
         const TracepointDescriptor::PathMap kExpectedPathMap = {
           { TracepointDescriptor::PathType::Root, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open" },
-          { TracepointDescriptor::PathType::EnableSwitch, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/enable" },
           { TracepointDescriptor::PathType::Format, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/format" },
           { TracepointDescriptor::PathType::EventIdentifier, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_open/id" },
         };

@@ -130,15 +130,8 @@ TracepointDescriptor::getTracepointPathMap(const std::string &category,
 
   auto root_path = kTracepointRootPath + category + "/" + name;
   path_map.insert({PathType::Root, root_path});
-
-  auto path = root_path + "/enable";
-  path_map.insert({PathType::EnableSwitch, path});
-
-  path = root_path + "/format";
-  path_map.insert({PathType::Format, path});
-
-  path = root_path + "/id";
-  path_map.insert({PathType::EventIdentifier, path});
+  path_map.insert({PathType::Format, root_path + "/format"});
+  path_map.insert({PathType::EventIdentifier, root_path + "/id"});
 
   return path_map;
 }
