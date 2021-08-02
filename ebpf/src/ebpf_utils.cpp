@@ -12,11 +12,11 @@
 #include <iostream>
 #include <sstream>
 
+#include <elf.h>
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 #include <sys/ioctl.h>
 #include <unistd.h>
-#include <elf.h>
 
 #if __has_include("sys/auxv.h")
 #include <sys/auxv.h>
@@ -145,13 +145,17 @@ StringErrorOr<std::uintptr_t> getVdsoBaseAddress() {
       char *null_term_ptr{nullptr};
       address = static_cast<std::uintptr_t>(
           std::strtoull(line.c_str(), &null_term_ptr, 16));
+
       if (address == 0 || null_term_ptr == nullptr || *null_term_ptr != 0) {
         return StringError::create("Failed to parse /proc/self/maps");
       }
+
+      return address;
     }
   }
 
-  return address;
+  return StringError::create(
+      "Failed to locate the vdso entry in /proc/self/maps");
 }
 #endif
 
