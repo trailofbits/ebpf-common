@@ -50,6 +50,10 @@ UprobePerfEvent::Type UprobePerfEvent::type() const {
 
 int UprobePerfEvent::fd() const { return d->event.get(); }
 
+bool UprobePerfEvent::isKprobeSyscall() const { return false; }
+
+bool UprobePerfEvent::useKprobeIndirectPtRegs() const { return false; }
+
 UprobePerfEvent::UprobePerfEvent(const std::string &name,
                                  const std::string &path, bool ret_probe,
                                  std::int32_t process_id)

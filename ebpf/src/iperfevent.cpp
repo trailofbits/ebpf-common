@@ -30,10 +30,10 @@ IPerfEvent::createTracepoint(const std::string &category,
 
 StringErrorOr<IPerfEvent::Ref>
 IPerfEvent::createKprobe(const std::string &name, bool ret_probe,
-                         std::int32_t process_id) {
+                         bool is_syscall, std::int32_t process_id) {
 
   try {
-    return Ref(new KprobePerfEvent(name, ret_probe, process_id));
+    return Ref(new KprobePerfEvent(name, is_syscall, ret_probe, process_id));
 
   } catch (const std::bad_alloc &) {
     return StringError::create("Memory allocation failure");

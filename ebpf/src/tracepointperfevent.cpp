@@ -37,6 +37,10 @@ TracepointPerfEvent::Type TracepointPerfEvent::type() const {
 
 int TracepointPerfEvent::fd() const { return d->event.get(); }
 
+bool TracepointPerfEvent::isKprobeSyscall() const { return false; }
+
+bool TracepointPerfEvent::useKprobeIndirectPtRegs() const { return false; }
+
 TracepointPerfEvent::TracepointPerfEvent(const std::string &category,
                                          const std::string &name,
                                          std::int32_t process_id)
