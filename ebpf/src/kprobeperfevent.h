@@ -26,8 +26,11 @@ public:
   virtual Type type() const override;
   virtual int fd() const override;
 
+  virtual bool isKprobeSyscall() const override;
+  virtual bool useKprobeIndirectPtRegs() const override;
+
 protected:
-  KprobePerfEvent(const std::string &name, bool ret_probe,
+  KprobePerfEvent(const std::string &name, bool ret_probe, bool is_syscall,
                   std::int32_t process_id);
 
   friend class IPerfEvent;

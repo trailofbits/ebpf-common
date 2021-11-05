@@ -35,7 +35,7 @@ public:
                                              std::int32_t process_id = -1);
 
   static StringErrorOr<Ref> createKprobe(const std::string &name,
-                                         bool ret_probe,
+                                         bool is_syscall, bool ret_probe,
                                          std::int32_t process_id = -1);
 
   static StringErrorOr<Ref> createUprobe(const std::string &name,
@@ -48,6 +48,9 @@ public:
 
   virtual Type type() const = 0;
   virtual int fd() const = 0;
+
+  virtual bool isKprobeSyscall() const = 0;
+  virtual bool useKprobeIndirectPtRegs() const = 0;
 
   IPerfEvent(const IPerfEvent &) = delete;
   IPerfEvent &operator=(const IPerfEvent &) = delete;

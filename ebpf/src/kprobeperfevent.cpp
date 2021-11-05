@@ -9,15 +9,19 @@
 #include "kprobeperfevent.h"
 #include "kprobe_helpers.h"
 
+#include <cstdint>
+
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 #include <unistd.h>
 
+#include <tob/utils/kernel.h>
 #include <tob/utils/uniquefd.h>
 
 namespace tob::ebpf {
 struct KprobePerfEvent::PrivateData final {
   bool ret_probe{false};
+  bool is_syscall{false};
   utils::UniqueFd event;
 };
 
@@ -29,11 +33,36 @@ KprobePerfEvent::Type KprobePerfEvent::type() const {
 
 int KprobePerfEvent::fd() const { return d->event.get(); }
 
+bool KprobePerfEvent::isKprobeSyscall() const { return d->is_syscall; }
+
+bool KprobePerfEvent::useKprobeIndirectPtRegs() const {
+  auto kernel_version_exp = utils::getKernelVersion();
+  if (!kernel_version_exp.succeeded()) {
+    return false;
+  }
+
+  auto kernel_version = kernel_version_exp.takeValue();
+
+  bool indirect_pt_regs{false};
+  if (kernel_version.major <= 3) {
+    indirect_pt_regs = false;
+
+  } else if (kernel_version.major == 4) {
+    indirect_pt_regs = kernel_version.minor < 16;
+
+  } else {
+    indirect_pt_regs = true;
+  }
+
+  return indirect_pt_regs;
+}
+
 KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
-                                 std::int32_t process_id)
+                                 bool is_syscall, std::int32_t process_id)
     : d(new PrivateData) {
 
   d->ret_probe = ret_probe;
+  d->is_syscall = is_syscall;
 
   struct perf_event_attr attr = {};
   attr.sample_period = 1;

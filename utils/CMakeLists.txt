@@ -25,6 +25,9 @@ function(ebpfCommonUtils)
     include/tob/utils/ielfimage.h
     src/elfimage.h
     src/elfimage.cpp
+
+    include/tob/utils/kernel.h
+    src/kernel.cpp
   )
 
   target_include_directories(utils PUBLIC include)

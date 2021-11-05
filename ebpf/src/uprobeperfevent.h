@@ -26,6 +26,9 @@ public:
   virtual Type type() const override;
   virtual int fd() const override;
 
+  virtual bool isKprobeSyscall() const override;
+  virtual bool useKprobeIndirectPtRegs() const override;
+
 protected:
   UprobePerfEvent(const std::string &name, const std::string &path,
                   bool ret_probe, std::int32_t process_id);
