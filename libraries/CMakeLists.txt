@@ -11,10 +11,7 @@ cmake_minimum_required(VERSION 3.14.6)
 function(ebpfCommonLibraries)
   add_subdirectory("libbpf")
   add_subdirectory("LLVM")
-
-  if(EBPF_COMMON_ENABLE_TESTS)
-    add_subdirectory("Catch2")
-  endif()
+  add_subdirectory("Catch2")
 endfunction()
 
 ebpfCommonLibraries()
