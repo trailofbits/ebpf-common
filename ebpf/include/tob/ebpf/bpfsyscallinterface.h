@@ -22,6 +22,7 @@ public:
 
   ~BPFSyscallInterface();
 
+  llvm::Value *getCurrentTask();
   llvm::Value *getCurrentPidTgid();
   llvm::Value *getCurrentUidGid();
 
@@ -47,6 +48,11 @@ public:
                                llvm::Value *data_ptr, std::uint32_t data_size);
 
   llvm::Value *getCurrentCgroupId();
+  llvm::Value *getCurrentComm(llvm::Value *buffer, std::uint32_t buffer_size);
+
+  void tracePrintk(llvm::Value *format, llvm::Value *format_size,
+                   llvm::Value *op1 = nullptr, llvm::Value *op2 = nullptr,
+                   llvm::Value *op3 = nullptr);
 
   void overrideReturn(llvm::Value *context, std::uint64_t exit_code);
 

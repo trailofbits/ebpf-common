@@ -99,4 +99,28 @@ getPtRegsStructure(llvm::Module &module, const std::string &structure_name) {
 
   return pt_regs_type;
 }
+
+std::size_t getTypeSize(llvm::Module &module, llvm::Type *type) {
+  llvm::DataLayout data_layout(&module);
+  return data_layout.getTypeAllocSize(type);
+}
+
+std::optional<std::size_t> getOffsetOf(llvm::Module &module, llvm::Type *type,
+                                       std::size_t index) {
+  auto struct_type = llvm::dyn_cast<llvm::StructType>(type);
+  if (struct_type == nullptr) {
+    return std::nullopt;
+  }
+
+  const auto &struct_element_list = struct_type->elements();
+
+  std::size_t offset{};
+  for (std::uint32_t i{}; i < static_cast<std::uint32_t>(index); ++i) {
+    auto element_type = struct_element_list[i];
+    offset += getTypeSize(module, element_type);
+  }
+
+  return offset;
+}
+
 } // namespace tob::ebpf

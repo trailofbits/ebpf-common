@@ -9,6 +9,7 @@
 #pragma once
 
 #include <memory>
+#include <optional>
 
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Module.h>
@@ -30,9 +31,11 @@ extern const LLVMInitializer kLLVMInitializer;
 std::unique_ptr<llvm::Module> createLLVMModule(llvm::LLVMContext &llvm_context,
                                                const std::string &module_name);
 
-std::size_t getLLVMStructureSize(llvm::StructType *llvm_struct,
-                                 llvm::Module *module);
-
 StringErrorOr<llvm::StructType *>
 getPtRegsStructure(llvm::Module &module, const std::string &structure_name);
+
+std::size_t getTypeSize(llvm::Module &module, llvm::Type *type);
+
+std::optional<std::size_t> getOffsetOf(llvm::Module &module, llvm::Type *type,
+                                       std::size_t index);
 } // namespace tob::ebpf

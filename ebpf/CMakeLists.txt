@@ -34,6 +34,12 @@ function(ebpfCommonEbpf)
     include/tob/ebpf/ebpf_utils.h
     src/ebpf_utils.cpp
 
+    include/tob/ebpf/illvmbridge.h
+    src/illvmbridge.cpp
+
+    src/llvmbridge.h
+    src/llvmbridge.cpp
+
     include/tob/ebpf/sectionmemorymanager.h
     src/sectionmemorymanager.cpp
 
@@ -64,6 +70,7 @@ function(ebpfCommonEbpf)
       thirdparty_libbpf
       error
       utils
+      btfparse
   )
 endfunction()
 
