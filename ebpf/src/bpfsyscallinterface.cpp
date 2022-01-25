@@ -67,6 +67,10 @@ BPFSyscallInterface::create(llvm::IRBuilder<> &builder) {
 
 BPFSyscallInterface::~BPFSyscallInterface() {}
 
+llvm::Value *BPFSyscallInterface::getCurrentTask() {
+  return assembleSystemCall<BPF_FUNC_get_current_task>(d->builder);
+}
+
 llvm::Value *BPFSyscallInterface::getCurrentPidTgid() {
   return assembleSystemCall<BPF_FUNC_get_current_pid_tgid>(d->builder);
 }
@@ -149,6 +153,34 @@ llvm::Value *BPFSyscallInterface::perfEventOutput(llvm::Value *context,
 llvm::Value *BPFSyscallInterface::getCurrentCgroupId() {
   return assembleSystemCall<BPF_FUNC_get_current_cgroup_id>(
       d->builder, d->builder.getInt64Ty(), {});
+}
+
+llvm::Value *BPFSyscallInterface::getCurrentComm(llvm::Value *buffer,
+                                                 std::uint32_t buffer_size) {
+  auto buffer_size_value = d->builder.getInt32(buffer_size);
+
+  return assembleSystemCall<BPF_FUNC_get_current_comm>(
+      d->builder, d->builder.getInt64Ty(), {buffer, buffer_size_value});
+}
+
+void BPFSyscallInterface::tracePrintk(llvm::Value *format,
+                                      llvm::Value *format_size,
+                                      llvm::Value *op1, llvm::Value *op2,
+                                      llvm::Value *op3) {
+
+  std::vector<llvm::Value *> argument_list = {
+      format,
+      format_size,
+  };
+
+  for (const auto &op : {op1, op2, op3}) {
+    if (op != nullptr) {
+      argument_list.push_back(op);
+    }
+  }
+
+  assembleSystemCall<BPF_FUNC_trace_printk>(d->builder, d->builder.getVoidTy(),
+                                            argument_list);
 }
 
 void BPFSyscallInterface::overrideReturn(llvm::Value *context,

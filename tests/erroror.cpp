@@ -7,6 +7,8 @@
 */
 
 #include <memory>
+#include <string>
+#include <type_traits>
 
 #include <catch2/catch.hpp>
 

@@ -42,6 +42,7 @@ function(generateEbpfCommonTests)
     tests/bpfmap.cpp
     tests/erroror.cpp
     tests/llvm_utils.cpp
+    tests/llvmbridge.cpp
     tests/sectionmemorymanager.cpp
     tests/tracepointdescriptor.cpp
     tests/typedbpfmap.cpp
@@ -56,6 +57,10 @@ function(generateEbpfCommonTests)
     ebpf
     error
     utils
+  )
+
+  target_include_directories(ebpf-common-tests PRIVATE
+    "${CMAKE_CURRENT_SOURCE_DIR}"
   )
 
   add_custom_target(run-ebpf-common-tests

@@ -4,3 +4,6 @@
 [submodule "libraries/Catch2/src"]
 	path = libraries/Catch2/src
 	url = https://github.com/catchorg/Catch2.git
+[submodule "libraries/btfparse/src"]
+	path = libraries/btfparse/src
+	url = https://github.com/trailofbits/btfparse
