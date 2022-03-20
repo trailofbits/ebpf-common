@@ -6,15 +6,14 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <tob/ebpf/tracepointdescriptor.h>
 
 namespace tob::ebpf {
 SCENARIO(
     "The TracepointDescriptor class can open, parse and convert tracepoint "
-    "parameters",
-    "[TracepointDescriptor]") {
+    "parameters") {
 
   GIVEN("A category and name") {
     const std::string category{"syscalls"};

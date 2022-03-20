@@ -6,8 +6,6 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-cmake_minimum_required(VERSION 3.14.6)
-
 function(configureSanitizers target_name)
   if(NOT EBPF_COMMON_ENABLE_SANITIZERS)
   message(STATUS "ebpf-common - Sanitizers: disabled")

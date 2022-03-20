@@ -8,12 +8,12 @@
 
 #include <vector>
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <tob/ebpf/llvm_utils.h>
 
 namespace tob::ebpf {
-SCENARIO("Determining LLVM structure size", "[LLVM Utils]") {
+SCENARIO("Determining LLVM structure size") {
   GIVEN("an LLVM structure type and module") {
     static const std::string kTestStructureName{"TestStructure"};
 
@@ -41,8 +41,7 @@ SCENARIO("Determining LLVM structure size", "[LLVM Utils]") {
     auto llvm_module = createLLVMModule(llvm_context, "BPFModule");
 
     WHEN("determining the structure size") {
-      auto structure_size =
-          getLLVMStructureSize(llvm_struct, llvm_module.get());
+      auto structure_size = getTypeSize(*llvm_module.get(), llvm_struct);
 
       THEN("the amount of bytes required to hold it in memory is returned") {
         REQUIRE(structure_size == 39);

@@ -6,15 +6,14 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <llvm/IR/IRBuilder.h>
 
 #include <tob/ebpf/sectionmemorymanager.h>
 
 namespace tob::ebpf {
-SCENARIO("Saving memory sections from the execution engine",
-         "[SectionMemoryManager]") {
+SCENARIO("Saving memory sections from the execution engine") {
 
   MemorySectionMap memory_section_map;
   SectionMemoryManager section_memory_manager(memory_section_map);
