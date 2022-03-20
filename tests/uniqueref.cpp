@@ -6,7 +6,7 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <tob/utils/uniqueref.h>
 
@@ -30,8 +30,8 @@ struct TestDeleter final {
 using UniqueRefTest = UniqueRef<TestDeleter>;
 } // namespace
 
-TEST_CASE("Custom deleter", "[UniqueRef]") {
-  SECTION("Must not be copyable") {
+TEST_CASE("Custom deleter") {
+  SUBCASE("Must not be copyable") {
     REQUIRE(std::is_copy_constructible<UniqueRefTest>::value == 0);
     REQUIRE(std::is_trivially_copy_constructible<UniqueRefTest>::value == 0);
     REQUIRE(std::is_nothrow_copy_constructible<UniqueRefTest>::value == 0);
@@ -41,7 +41,7 @@ TEST_CASE("Custom deleter", "[UniqueRef]") {
     REQUIRE(std::is_nothrow_copy_assignable<UniqueRefTest>::value == 0);
   }
 
-  SECTION("Empty UniqueRef, going out of scope") {
+  SUBCASE("Empty UniqueRef, going out of scope") {
     dealloc_count = 0U;
 
     { UniqueRefTest obj; }
@@ -49,7 +49,7 @@ TEST_CASE("Custom deleter", "[UniqueRef]") {
     REQUIRE(dealloc_count == 0U);
   }
 
-  SECTION("Valid UniqueRef, going out of scope") {
+  SUBCASE("Valid UniqueRef, going out of scope") {
     dealloc_count = 0U;
 
     { UniqueRefTest obj(1); }
@@ -57,7 +57,7 @@ TEST_CASE("Custom deleter", "[UniqueRef]") {
     REQUIRE(dealloc_count == 1U);
   }
 
-  SECTION("Reset UniqueRef, going out of scope") {
+  SUBCASE("Reset UniqueRef, going out of scope") {
     dealloc_count = 0U;
 
     {
@@ -68,7 +68,7 @@ TEST_CASE("Custom deleter", "[UniqueRef]") {
     REQUIRE(dealloc_count == 1U);
   }
 
-  SECTION("Reset UniqueRef with null value, going out of scope") {
+  SUBCASE("Reset UniqueRef with null value, going out of scope") {
     dealloc_count = 0U;
 
     {
@@ -79,7 +79,7 @@ TEST_CASE("Custom deleter", "[UniqueRef]") {
     REQUIRE(dealloc_count == 0U);
   }
 
-  SECTION("Reset UniqueRef, multiple times") {
+  SUBCASE("Reset UniqueRef, multiple times") {
     dealloc_count = 0U;
 
     {
@@ -95,7 +95,7 @@ TEST_CASE("Custom deleter", "[UniqueRef]") {
     REQUIRE(dealloc_count == 4U);
   }
 
-  SECTION("Move assignment") {
+  SUBCASE("Move assignment") {
     dealloc_count = 0U;
 
     UniqueRefTest obj;
@@ -117,7 +117,7 @@ TEST_CASE("Custom deleter", "[UniqueRef]") {
     REQUIRE(dealloc_count == 1U);
   }
 
-  SECTION("Move constructor") {
+  SUBCASE("Move constructor") {
     dealloc_count = 0U;
 
     UniqueRefTest obj;

@@ -10,7 +10,7 @@
 #include <string>
 #include <type_traits>
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <tob/error/erroror.h>
 
@@ -30,10 +30,10 @@ using TestUniquePtr = std::unique_ptr<void, TestDeleter>;
 using TestErrorOr = ErrorOr<TestUniquePtr, std::string>;
 } // namespace
 
-TEST_CASE("Value lifetime", "[ErrorOr]") {
+TEST_CASE("Value lifetime") {
   void *kDummyPointer{reinterpret_cast<void *>(1)};
 
-  SECTION("Must not be copyable") {
+  SUBCASE("Must not be copyable") {
     REQUIRE(std::is_copy_constructible<TestErrorOr>::value == 0);
     REQUIRE(std::is_trivially_copy_constructible<TestErrorOr>::value == 0);
     REQUIRE(std::is_nothrow_copy_constructible<TestErrorOr>::value == 0);
@@ -43,7 +43,7 @@ TEST_CASE("Value lifetime", "[ErrorOr]") {
     REQUIRE(std::is_nothrow_copy_assignable<TestErrorOr>::value == 0);
   }
 
-  SECTION("Setting and getting the value object") {
+  SUBCASE("Setting and getting the value object") {
     {
       dealloc_count = 0U;
       TestUniquePtr test_unique_ptr;
@@ -75,7 +75,7 @@ TEST_CASE("Value lifetime", "[ErrorOr]") {
     REQUIRE(dealloc_count == 1U);
   }
 
-  SECTION("Moving an ErrorOr with a valid value") {
+  SUBCASE("Moving an ErrorOr with a valid value") {
     dealloc_count = 0U;
 
     TestErrorOr original;

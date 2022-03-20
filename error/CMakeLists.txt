@@ -6,12 +6,5 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-cmake_minimum_required(VERSION 3.14.6)
-project("error")
-
-function(ebpfCommonError)
-  add_library(error INTERFACE)
-  target_include_directories(error INTERFACE include)
-endfunction()
-
-ebpfCommonError()
+add_library(error INTERFACE)
+target_include_directories(error INTERFACE include)

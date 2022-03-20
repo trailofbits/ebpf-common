@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <tob/ebpf/bpfmap.h>
 
@@ -23,7 +23,7 @@ TestBPFHashMap::Ref bpf_hash_map;
 const std::vector<std::uint8_t> kTestValue(kValueSize, 0xFFU);
 } // namespace
 
-TEST_CASE("Setting values", "[BPFMap]") {
+TEST_CASE("Setting values") {
   if (!bpf_hash_map) {
     auto bpf_hash_map_exp = TestBPFHashMap::create(kValueSize, kHashMapSize);
     REQUIRE(bpf_hash_map_exp.succeeded());
@@ -31,7 +31,7 @@ TEST_CASE("Setting values", "[BPFMap]") {
     bpf_hash_map = bpf_hash_map_exp.takeValue();
   }
 
-  SECTION("Setting values") {
+  SUBCASE("Setting values") {
     for (std::uint32_t i = 0; i < kHashMapSize; ++i) {
       auto err = bpf_hash_map->set(i, kTestValue);
       REQUIRE(err.value() == BPFMapErrorCode::Value::Success);
@@ -39,7 +39,7 @@ TEST_CASE("Setting values", "[BPFMap]") {
     }
   }
 
-  SECTION("Retrieving existing values") {
+  SUBCASE("Retrieving existing values") {
     for (std::uint32_t i = 0; i < kHashMapSize; ++i) {
       std::vector<std::uint8_t> value;
       auto err = bpf_hash_map->get(value, i);
@@ -51,7 +51,7 @@ TEST_CASE("Setting values", "[BPFMap]") {
     }
   }
 
-  SECTION("Removing existing values") {
+  SUBCASE("Removing existing values") {
     for (std::uint32_t i = 0; i < kHashMapSize; ++i) {
       auto err = bpf_hash_map->erase(i);
 
@@ -60,7 +60,7 @@ TEST_CASE("Setting values", "[BPFMap]") {
     }
   }
 
-  SECTION("Retrieving inexisting values") {
+  SUBCASE("Retrieving inexisting values") {
     for (std::uint32_t i = 0; i < kHashMapSize; ++i) {
       std::vector<std::uint8_t> value;
       auto err = bpf_hash_map->get(value, i);
@@ -72,7 +72,7 @@ TEST_CASE("Setting values", "[BPFMap]") {
     }
   }
 
-  SECTION("Removing inexisting values") {
+  SUBCASE("Removing inexisting values") {
     for (std::uint32_t i = 0; i < kHashMapSize; ++i) {
       auto err = bpf_hash_map->erase(i);
 

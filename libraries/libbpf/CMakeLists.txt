@@ -6,16 +6,7 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-cmake_minimum_required(VERSION 3.14.6)
-project("libbpf")
-
-function(ebpfCommonLibrariesLibbpf)
-  set(library_root "${CMAKE_CURRENT_SOURCE_DIR}/src")
-
-  add_library(thirdparty_libbpf INTERFACE)
-  target_include_directories(thirdparty_libbpf SYSTEM INTERFACE
-    "${library_root}/include/uapi"
-  )
-endfunction()
-
-ebpfCommonLibrariesLibbpf()
+add_library(thirdparty_libbpf INTERFACE)
+target_include_directories(thirdparty_libbpf SYSTEM INTERFACE
+  "${CMAKE_CURRENT_SOURCE_DIR}/src/include/uapi"
+)

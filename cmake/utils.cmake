@@ -6,8 +6,6 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-cmake_minimum_required(VERSION 3.14.6)
-
 function(generateSettingsTargets)
   add_library(common_target_settings INTERFACE)
   target_compile_options(common_target_settings INTERFACE

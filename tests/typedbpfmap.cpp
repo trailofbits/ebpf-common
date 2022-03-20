@@ -8,7 +8,7 @@
 
 #include <cstdint>
 
-#include <catch2/catch.hpp>
+#include <doctest/doctest.h>
 
 #include <tob/ebpf/typedbpfmap.h>
 
@@ -18,9 +18,8 @@ using TestBPFHashMap =
     TypedBPFMap<BPF_MAP_TYPE_HASH, std::uint32_t, std::uint32_t>;
 }
 
-SCENARIO(
-    "The TypedBPFMap class can instantiate and manipulate typed BPF hash maps",
-    "[TypedBPFMap]") {
+SCENARIO("The TypedBPFMap class can instantiate and manipulate typed BPF hash "
+         "maps") {
 
   GIVEN("a typed BPF hash map") {
     const std::size_t kHashMapSize{10U};
