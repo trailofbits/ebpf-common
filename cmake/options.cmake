@@ -46,3 +46,4 @@ else()
 endif()
 
 option(EBPF_COMMON_ENABLE_LIBCPP "Set to ON to build with libc++" ${default_libcpp_setting})
+set(EBPF_COMMON_ZLIB_LIBRARY_PATH "" CACHE FILEPATH "Specifies the path of the zlib library file to use. If left empty the system one will be used")

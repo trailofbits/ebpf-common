@@ -33,6 +33,41 @@ function(ebpfCommonLibrariesLLVM)
     ${llvm_component_list}
   )
 
+  if(NOT EBPF_COMMON_ZLIB_LIBRARY_PATH STREQUAL "")
+    # This is a bit of a hack. The LLVM libraries want to link against a shared version of libz,
+    # some ebpfpub users want to be able to override this, to avoid using the system one.
+    # We therefore list all the library targets that the user of ebpf-common will end up linking,
+    # and remove any reference to "z" or "-lz" and use the one specified in EBPF_COMMON_ZLIB_LIBRARY
+
+    if(NOT EXISTS "${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
+      message(FATAL_ERROR "The path specified in EBPF_COMMON_ZLIB_LIBRARY_PATH does not exist")
+    endif()
+
+    # This is an LLVM CMake helper function which lists all the library targets that the user will end up linking against
+    explicit_map_components_to_libraries(llvm_full_library_list ${llvm_component_list})
+
+    foreach(llvm_library ${llvm_full_library_list})
+      get_target_property(INTERFACE_LINK_OPTIONS ${llvm_library} INTERFACE_LINK_OPTIONS)
+      get_target_property(INTERFACE_LINK_LIBRARIES ${llvm_library} INTERFACE_LINK_LIBRARIES)
+
+      if(NOT "${INTERFACE_LINK_OPTIONS}" STREQUAL "INTERFACE_LINK_OPTIONS-NOTFOUND")
+        list(REMOVE_ITEM INTERFACE_LINK_OPTIONS "-lz" ${INTERFACE_LINK_OPTIONS})
+        set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_OPTIONS ${INTERFACE_LINK_OPTIONS})
+        message(STATUS "Library ${llvm_library} setting options: ${INTERFACE_LINK_OPTIONS}")
+      endif()
+
+      if(NOT "${INTERFACE_LINK_LIBRARIES}" STREQUAL "INTERFACE_LINK_LIBRARIES-NOTFOUND")
+        message(STATUS "Library ${llvm_library} starting with: ${INTERFACE_LINK_LIBRARIES}")
+        list(REMOVE_ITEM INTERFACE_LINK_LIBRARIES "z")
+        list(REMOVE_ITEM INTERFACE_LINK_LIBRARIES "-lz")
+        list(APPEND INTERFACE_LINK_LIBRARIES "${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
+        set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_LIBRARIES "${INTERFACE_LINK_LIBRARIES}")
+        message(STATUS "Library ${llvm_library} setting libraries: ${INTERFACE_LINK_LIBRARIES}")
+      endif()
+
+    endforeach()
+  endif()
+
   add_library(thirdparty_llvm INTERFACE)
   target_link_libraries(thirdparty_llvm INTERFACE ${llvm_library_list})
 
