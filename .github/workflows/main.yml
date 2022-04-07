@@ -29,7 +29,7 @@ jobs:
 
     - name: Select the CMake version
       id: cmake_version
-      run: echo ::set-output name=VALUE::3.16.4
+      run: echo ::set-output name=VALUE::3.22.1
 
     - name: Generate cache key
       id: cache_key
@@ -54,7 +54,7 @@ jobs:
         key: ${{ steps.cache_key.outputs.VALUE }}_gitsubmodules
 
     - name: Create the build folders
-      run: mkdir -p ccache build downloads
+      run: mkdir -p ccache downloads
 
     - name: Synchronize the submodules
       run: git submodule sync --recursive
@@ -66,20 +66,29 @@ jobs:
       id: osquery_toolchain_installer
       run: |
         if [ ! -f downloads/osquery-toolchain.tar.xz ] ; then
-          curl -L "${{ steps.osquery_toolchain_settings.outputs.BASE_URL }}/${{ steps.osquery_toolchain_settings.outputs.VERSION }}/osquery-toolchain-${{ steps.osquery_toolchain_settings.outputs.VERSION }}-x86_64.tar.xz" -o downloads/osquery-toolchain.tar.xz
+          curl \
+            -L \
+            "${{ steps.osquery_toolchain_settings.outputs.BASE_URL }}/${{ steps.osquery_toolchain_settings.outputs.VERSION }}/osquery-toolchain-${{ steps.osquery_toolchain_settings.outputs.VERSION }}-x86_64.tar.xz" \
+            -o downloads/osquery-toolchain.tar.xz
         fi
 
         tar xf downloads/osquery-toolchain.tar.xz
         echo ::set-output name=PATH::$(realpath osquery-toolchain)
 
     - name: Install system dependencies
-      run: sudo apt-get install ccache ninja-build -y
+      run: |
+        sudo apt-get install -y \
+          ccache \
+          ninja-build
 
     - name: Install CMake
       id: cmake_installer
       run: |
         if [ ! -f downloads/cmake.tar.gz ] ; then
-          curl -L "https://github.com/Kitware/CMake/releases/download/v${{ steps.cmake_version.outputs.VALUE }}/cmake-${{ steps.cmake_version.outputs.VALUE }}-Linux-x86_64.tar.gz" -o downloads/cmake.tar.gz
+          curl \
+            -L \
+            "https://github.com/Kitware/CMake/releases/download/v${{ steps.cmake_version.outputs.VALUE }}/cmake-${{ steps.cmake_version.outputs.VALUE }}-Linux-x86_64.tar.gz" \
+            -o downloads/cmake.tar.gz
         fi
 
         tar xzf downloads/cmake.tar.gz
@@ -88,12 +97,26 @@ jobs:
     - name: Configure the project
       run: |
         export CCACHE_DIR="$(realpath ccache)"
-        ( cd build && ${{ steps.cmake_installer.outputs.CMAKE_BINARY }} -G Ninja -DEBPF_COMMON_TOOLCHAIN_PATH:PATH=${{ steps.osquery_toolchain_installer.outputs.PATH }} -DCMAKE_BUILD_TYPE:STRING=${{ matrix.build_type }} -DEBPF_COMMON_ENABLE_TESTS:BOOL=true -DEBPF_COMMON_ENABLE_SANITIZERS:BOOL=true .. )
+
+        ${{ steps.cmake_installer.outputs.CMAKE_BINARY }} \
+          -G Ninja \
+          -DEBPF_COMMON_TOOLCHAIN_PATH:PATH=${{ steps.osquery_toolchain_installer.outputs.PATH }} \
+          -DCMAKE_BUILD_TYPE:STRING=${{ matrix.build_type }} \
+          -DEBPF_COMMON_ENABLE_TESTS:BOOL=true -DEBPF_COMMON_ENABLE_SANITIZERS:BOOL=true \
+          -S . \
+          -B build
 
     - name: Build the project
       run: |
         export CCACHE_DIR="$(realpath ccache)"
-        ( cd build && ninja -v )
+
+        ${{ steps.cmake_installer.outputs.CMAKE_BINARY }} \
+          --build build \
+          -- -v
 
     - name: Run the tests
-      run: ( cd build && ninja -v run-ebpf-common-tests )
+      run: |
+        sudo ${{ steps.cmake_installer.outputs.CMAKE_BINARY }} \
+          --build build \
+          --target run-ebpf-common-tests \
+          -- -v
