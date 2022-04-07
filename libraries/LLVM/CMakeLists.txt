@@ -43,6 +43,8 @@ function(ebpfCommonLibrariesLLVM)
       message(FATAL_ERROR "The path specified in EBPF_COMMON_ZLIB_LIBRARY_PATH does not exist")
     endif()
 
+    message(STATUS: "Overriding zlib library with: ${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
+
     # This is an LLVM CMake helper function which lists all the library targets that the user will end up linking against
     explicit_map_components_to_libraries(llvm_full_library_list ${llvm_component_list})
 
@@ -53,7 +55,6 @@ function(ebpfCommonLibrariesLLVM)
       if(NOT "${INTERFACE_LINK_OPTIONS}" STREQUAL "INTERFACE_LINK_OPTIONS-NOTFOUND")
         list(REMOVE_ITEM INTERFACE_LINK_OPTIONS "-lz" ${INTERFACE_LINK_OPTIONS})
         set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_OPTIONS ${INTERFACE_LINK_OPTIONS})
-        message(STATUS "Library ${llvm_library} setting options: ${INTERFACE_LINK_OPTIONS}")
       endif()
 
       if(NOT "${INTERFACE_LINK_LIBRARIES}" STREQUAL "INTERFACE_LINK_LIBRARIES-NOTFOUND")
@@ -62,7 +63,6 @@ function(ebpfCommonLibrariesLLVM)
         list(REMOVE_ITEM INTERFACE_LINK_LIBRARIES "-lz")
         list(APPEND INTERFACE_LINK_LIBRARIES "${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
         set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_LIBRARIES "${INTERFACE_LINK_LIBRARIES}")
-        message(STATUS "Library ${llvm_library} setting libraries: ${INTERFACE_LINK_LIBRARIES}")
       endif()
 
     endforeach()
