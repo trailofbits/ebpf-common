@@ -8,6 +8,10 @@
 
 cmake_minimum_required(VERSION 3.14.6)
 
+# This is normally set by project(), but it's needed by options.cmake
+# which is called before that.
+set(PROJECT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+
 include("cmake/options.cmake")
 include("cmake/sanitizers.cmake")
 include("cmake/utils.cmake")
