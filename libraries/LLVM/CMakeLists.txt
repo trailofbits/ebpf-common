@@ -38,33 +38,46 @@ function(ebpfCommonLibrariesLLVM)
     # some ebpfpub users want to be able to override this, to avoid using the system one.
     # We therefore list all the library targets that the user of ebpf-common will end up linking,
     # and remove any reference to "z" or "-lz" and use the one specified in EBPF_COMMON_ZLIB_LIBRARY
-
-    if(NOT EXISTS "${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
-      message(FATAL_ERROR "The path specified in EBPF_COMMON_ZLIB_LIBRARY_PATH does not exist")
-    endif()
-
-    message(STATUS: "Overriding zlib library with: ${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
+    message(STATUS "ebpf-common - Overriding zlib library with: ${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
 
     # This is an LLVM CMake helper function which lists all the library targets that the user will end up linking against
     explicit_map_components_to_libraries(llvm_full_library_list ${llvm_component_list})
 
     foreach(llvm_library ${llvm_full_library_list})
-      get_target_property(INTERFACE_LINK_OPTIONS ${llvm_library} INTERFACE_LINK_OPTIONS)
-      get_target_property(INTERFACE_LINK_LIBRARIES ${llvm_library} INTERFACE_LINK_LIBRARIES)
+      get_target_property(interface_link_options ${llvm_library} INTERFACE_LINK_OPTIONS)
+      get_target_property(interface_link_libraries ${llvm_library} INTERFACE_LINK_LIBRARIES)
 
-      if(NOT "${INTERFACE_LINK_OPTIONS}" STREQUAL "INTERFACE_LINK_OPTIONS-NOTFOUND")
-        list(REMOVE_ITEM INTERFACE_LINK_OPTIONS "-lz" ${INTERFACE_LINK_OPTIONS})
-        set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_OPTIONS ${INTERFACE_LINK_OPTIONS})
+      if(NOT "${interface_link_options}" STREQUAL "interface_link_options-NOTFOUND")
+        list(FIND interface_link_options "-lz" libz_pos)
+
+        if (NOT ${libz_pos} EQUAL -1)
+          list(REMOVE_ITEM interface_link_options "-lz")
+          set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_OPTIONS ${interface_link_options})
+        endif()
       endif()
 
-      if(NOT "${INTERFACE_LINK_LIBRARIES}" STREQUAL "INTERFACE_LINK_LIBRARIES-NOTFOUND")
-        message(STATUS "Library ${llvm_library} starting with: ${INTERFACE_LINK_LIBRARIES}")
-        list(REMOVE_ITEM INTERFACE_LINK_LIBRARIES "z")
-        list(REMOVE_ITEM INTERFACE_LINK_LIBRARIES "-lz")
-        list(APPEND INTERFACE_LINK_LIBRARIES "${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
-        set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_LIBRARIES "${INTERFACE_LINK_LIBRARIES}")
-      endif()
+      if(NOT "${interface_link_libraries}" STREQUAL "interface_link_libraries-NOTFOUND")
+        set(substitute_zlib FALSE)
 
+        list(FIND interface_link_libraries "z" libz_pos)
+
+        if (NOT ${libz_pos} EQUAL -1)
+          set(substitute_zlib TRUE)
+          list(REMOVE_ITEM interface_link_libraries "z")
+        endif()
+
+        list(FIND interface_link_libraries "-lz" libz_pos)
+
+        if (NOT ${libz_pos} EQUAL -1)
+          set(substitute_zlib TRUE)
+          list(REMOVE_ITEM interface_link_libraries "-lz")
+        endif()
+
+        if(substitute_zlib)
+          list(APPEND interface_link_libraries "${EBPF_COMMON_ZLIB_LIBRARY_PATH}")
+          set_target_properties(${llvm_library} PROPERTIES INTERFACE_LINK_LIBRARIES "${interface_link_libraries}")
+        endif()
+      endif()
     endforeach()
   endif()
 
