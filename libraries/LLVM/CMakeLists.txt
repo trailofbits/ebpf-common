@@ -33,7 +33,7 @@ function(ebpfCommonLibrariesLLVM)
     ${llvm_component_list}
   )
 
-  if(NOT EBPF_COMMON_ZLIB_LIBRARY_PATH STREQUAL "")
+  if(NOT "${EBPF_COMMON_ZLIB_LIBRARY_PATH}" STREQUAL "")
     # This is a bit of a hack. The LLVM libraries want to link against a shared version of libz,
     # some ebpfpub users want to be able to override this, to avoid using the system one.
     # We therefore list all the library targets that the user of ebpf-common will end up linking,
