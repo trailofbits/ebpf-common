@@ -18,12 +18,17 @@ namespace tob::ebpf {
 
 class LLVMBridge final : public ILLVMBridge {
 public:
+  /// Constructor
   LLVMBridge(llvm::Module &module, const IBTF &btf);
+
+  /// Destructor
   virtual ~LLVMBridge();
 
+  /// \copydoc ILLVMBridge::getType
   virtual Result<llvm::Type *, LLVMBridgeError>
   getType(const std::string &name) const override;
 
+  /// \copydoc ILLVMBridge::read
   virtual std::optional<LLVMBridgeError>
   read(llvm::IRBuilder<> &builder, llvm::Value *dest, llvm::Value *src,
        const std::string &path,
@@ -38,6 +43,12 @@ private:
                                             const BTFType &type);
 
 public:
+  /// ID of the custom BTF type used for padding
+  static const std::uint32_t kInternalByteTypeID;
+
+  /// BTF ID generator, used to create padding types
+  static const std::uint32_t kInitialCustomBTFTypeID;
+
   /// A single component of a broken down path
   struct PathComponent final {
     /// The name of this path component
@@ -112,8 +123,10 @@ public:
     std::unordered_map<llvm::Type *, std::uint32_t> llvm_to_btf_type_id;
   };
 
+  /// Instance data
   std::unique_ptr<Context> d;
 
+  /// \copydoc LLVMBridge::getType
   static Result<llvm::Type *, LLVMBridgeError> getType(const Context &context,
                                                        const std::string &name);
 
@@ -130,13 +143,16 @@ public:
                                              std::uint32_t btf_type_id,
                                              const std::string &component);
 
+  /// Initializes internal types
+  static void initializeInternalTypes(Context &context);
+
   /// Preprocesses all types
   static std::optional<LLVMBridgeError> preprocessTypes(Context &context);
 
   /// Returns true if the given struct member is a bitfield
   static bool isBitfield(const StructBTFType::Member &member);
 
-  /// Expand `destination` with `bitfield`
+  /// Expands `destination` with `bitfield`
   static bool expandBitfield(StructBTFType::Member &destination,
                              const StructBTFType::Member &bitfield);
 
@@ -151,12 +167,12 @@ public:
                       std::uint32_t btf_id);
 
   /// Returns the bit size of the given BTF type
-  static std::optional<std::uint32_t>
-  getBTFTypeSize(const BTFTypeMap &btf_type_map, const BTFType &type);
+  static std::optional<std::uint32_t> getBTFTypeSize(const Context &context,
+                                                     const BTFType &type);
 
   /// Returns the bit size of the given BTF type id
-  static std::optional<std::uint32_t>
-  getBTFTypeSize(const BTFTypeMap &btf_type_map, std::uint32_t type);
+  static std::optional<std::uint32_t> getBTFTypeSize(const Context &context,
+                                                     std::uint32_t type);
 
   /// Generates an ArrayBTFType of the specified size
   static std::uint32_t generatePaddingBTFArrayType(Context &context,

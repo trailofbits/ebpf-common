@@ -20,13 +20,16 @@ namespace tob::ebpf {
 
 namespace {
 
+// Name prefix for bitfield storages
 const std::string kBitfieldStorageNamePrefix{"__llvmbridge_bitfield_storage"};
+
+// Name prefix for padding structure members
 const std::string kPaddingFieldNamePrefix{"__llvmbridge_padding"};
+
+// Name of the custom BTF type used for padding
 const std::string kInternalByteTypeName{"__llvmbridge_u8"};
 
-const std::uint32_t kInternalByteTypeID{0xFFFFFFFF - 1};
-const std::uint32_t kInitialCustomBTFTypeID{kInternalByteTypeID - 1};
-
+// Importer callbacks
 const std::unordered_map<BTFKind, std::optional<LLVMBridgeError> (*)(
                                       LLVMBridge::Context &, llvm::Module &,
                                       std::uint32_t, const BTFType &)>
@@ -52,10 +55,16 @@ const std::unordered_map<BTFKind, std::optional<LLVMBridgeError> (*)(
 
 } // namespace
 
+const std::uint32_t LLVMBridge::kInternalByteTypeID{0xFFFFFFFF - 1};
+const std::uint32_t LLVMBridge::kInitialCustomBTFTypeID{kInternalByteTypeID -
+                                                        1};
+
 LLVMBridge::LLVMBridge(llvm::Module &module, const IBTF &btf)
     : d(new Context(module)) {
 
   d->btf_type_map = btf.getAll();
+
+  initializeInternalTypes(*d.get());
   auto opt_error = preprocessTypes(*d.get());
   if (opt_error.has_value()) {
     throw opt_error.value();
@@ -74,7 +83,7 @@ LLVMBridge::getType(const std::string &name) const {
   return getType(*d.get(), name);
 }
 
-std::optional<LLVMBridgeError> LLVMBridge::preprocessTypes(Context &context) {
+void LLVMBridge::initializeInternalTypes(Context &context) {
   IntBTFType byte_type;
   byte_type.name = kInternalByteTypeName;
   byte_type.size = 1;
@@ -83,7 +92,9 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessTypes(Context &context) {
   byte_type.bits = 8;
 
   context.btf_type_map.insert({kInternalByteTypeID, std::move(byte_type)});
+}
 
+std::optional<LLVMBridgeError> LLVMBridge::preprocessTypes(Context &context) {
   for (const auto &p : context.btf_type_map) {
     auto btf_id = p.first;
     const auto &btf_type = p.second;
@@ -147,7 +158,6 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessStructureType(
        member_it != struct_type.member_list.end(); ++member_it) {
 
     const auto &member = *member_it;
-
     if (current_offset > member.offset) {
       return LLVMBridgeError(LLVMBridgeErrorCode::InvalidStructureMemberOffset);
     }
@@ -155,10 +165,8 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessStructureType(
     auto padding_bit_count = member.offset - current_offset;
 
     if (isBitfield(member)) {
-      // Either:
-      // 1. New bitfield
-      // 2. A new part of an existing bitfield
       if (!opt_current_bitfield.has_value()) {
+        // New bitfield
         auto current_bitfield = member;
 
         current_bitfield.opt_name =
@@ -180,6 +188,7 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessStructureType(
         opt_current_bitfield = std::move(current_bitfield);
 
       } else {
+        // A new part of an existing bitfield
         auto bitfield = member;
 
         // Adjust the bitfield if there's a hole between the previous one and
@@ -213,6 +222,7 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessStructureType(
       StructFieldMapping::Mask mask;
       mask.bit_offset = member.offset - current_bitfield.offset;
       mask.bit_size = member.opt_bitfield_size.value();
+      mapping.opt_mask = std::move(mask);
 
       struct_mapping.push_back(std::move(mapping));
 
@@ -261,7 +271,7 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessStructureType(
         current_offset += padding_bit_count;
       }
 
-      auto opt_type_size = getBTFTypeSize(context.btf_type_map, member.type);
+      auto opt_type_size = getBTFTypeSize(context, member.type);
       if (!opt_type_size.has_value()) {
         return LLVMBridgeError(LLVMBridgeErrorCode::UnsupportedBTFType);
       }
@@ -339,6 +349,12 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessUnionType(
   StructMapping struct_mapping;
 
   for (const auto &member : union_type.member_list) {
+    auto is_bitfield = (member.opt_bitfield_size.has_value() &&
+                        member.opt_bitfield_size.value() != 0);
+    if (is_bitfield) {
+      return LLVMBridgeError(LLVMBridgeErrorCode::UnsupportedBTFType);
+    }
+
     StructFieldMapping mapping = {};
 
     mapping.opt_name = member.opt_name;
@@ -350,7 +366,6 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessUnionType(
   }
 
   context.btf_struct_mapping.insert({btf_id, struct_mapping});
-
   return std::nullopt;
 }
 
@@ -500,7 +515,7 @@ LLVMBridge::locate(const LLVMBridge::Context &context,
 }
 
 std::optional<std::uint32_t>
-LLVMBridge::getBTFTypeSize(const BTFTypeMap &btf_type_map,
+LLVMBridge::getBTFTypeSize(const LLVMBridge::Context &context,
                            const BTFType &type) {
 
   switch (IBTF::getBTFTypeKind(type)) {
@@ -520,7 +535,7 @@ LLVMBridge::getBTFTypeSize(const BTFTypeMap &btf_type_map,
   case BTFKind::Array: {
     const auto &btf_type = std::get<ArrayBTFType>(type);
 
-    auto opt_elem_size = getBTFTypeSize(btf_type_map, btf_type.type);
+    auto opt_elem_size = getBTFTypeSize(context, btf_type.type);
     if (!opt_elem_size.has_value()) {
       return opt_elem_size;
     }
@@ -549,17 +564,17 @@ LLVMBridge::getBTFTypeSize(const BTFTypeMap &btf_type_map,
 
   case BTFKind::Typedef: {
     const auto &btf_type = std::get<TypedefBTFType>(type);
-    return getBTFTypeSize(btf_type_map, btf_type.type);
+    return getBTFTypeSize(context, btf_type.type);
   }
 
   case BTFKind::Volatile: {
     const auto &btf_type = std::get<VolatileBTFType>(type);
-    return getBTFTypeSize(btf_type_map, btf_type.type);
+    return getBTFTypeSize(context, btf_type.type);
   }
 
   case BTFKind::Const: {
     const auto &btf_type = std::get<ConstBTFType>(type);
-    return getBTFTypeSize(btf_type_map, btf_type.type);
+    return getBTFTypeSize(context, btf_type.type);
   }
 
   case BTFKind::Restrict: {
@@ -592,14 +607,15 @@ LLVMBridge::getBTFTypeSize(const BTFTypeMap &btf_type_map,
 }
 
 std::optional<std::uint32_t>
-LLVMBridge::getBTFTypeSize(const BTFTypeMap &btf_type_map, std::uint32_t type) {
+LLVMBridge::getBTFTypeSize(const LLVMBridge::Context &context,
+                           std::uint32_t type) {
 
-  auto type_it = btf_type_map.find(type);
-  if (type_it == btf_type_map.end()) {
+  auto type_it = context.btf_type_map.find(type);
+  if (type_it == context.btf_type_map.end()) {
     return std::nullopt;
   }
 
-  return getBTFTypeSize(btf_type_map, type_it->second);
+  return getBTFTypeSize(context, type_it->second);
 }
 
 std::uint32_t LLVMBridge::generatePaddingBTFArrayType(Context &context,
