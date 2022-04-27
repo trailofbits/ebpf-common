@@ -9,7 +9,8 @@
 #pragma once
 
 #include <tob/ebpf/cpu.h>
-#include <tob/error/error.h>
+#include <tob/error/errorstatus.h>
+#include <tob/error/stringerror.h>
 
 #include <cstring>
 #include <memory>
@@ -37,7 +38,8 @@ struct BPFMapResult final {
   }
 };
 
-using BPFMapErrorCode = ErrorCode<BPFMapResult, BPFMapResult::ErrorCode::Error>;
+using BPFMapErrorCode =
+    ErrorStatus<BPFMapResult, BPFMapResult::ErrorCode::Error>;
 
 template <enum bpf_map_type map_type, typename KeyType> class BPFMap final {
   // clang-format off

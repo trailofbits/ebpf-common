@@ -14,7 +14,7 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/Module.h>
 
-#include <tob/error/error.h>
+#include <tob/error/stringerror.h>
 
 namespace tob::ebpf {
 class LLVMInitializer final {

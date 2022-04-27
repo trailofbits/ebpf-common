@@ -8,7 +8,7 @@
 
 #pragma once
 
-#include <tob/error/error.h>
+#include <tob/error/stringerror.h>
 
 namespace tob::utils {
 enum class Architecture { x86, x64, AArch32, AArch64 };
