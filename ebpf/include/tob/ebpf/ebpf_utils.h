@@ -12,7 +12,7 @@
 
 #include <tob/ebpf/iperfevent.h>
 #include <tob/ebpf/types.h>
-#include <tob/error/error.h>
+#include <tob/error/stringerror.h>
 
 namespace tob::ebpf {
 StringErrorOr<BPFProgramMap> compileModule(llvm::Module &module);

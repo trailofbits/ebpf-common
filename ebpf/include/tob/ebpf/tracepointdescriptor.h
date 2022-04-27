@@ -13,7 +13,7 @@
 #include <vector>
 
 #include <tob/ebpf/structure.h>
-#include <tob/error/error.h>
+#include <tob/error/stringerror.h>
 
 namespace tob::ebpf {
 class TracepointDescriptor final {

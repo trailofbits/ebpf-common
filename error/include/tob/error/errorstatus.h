@@ -10,12 +10,12 @@
 
 namespace tob {
 template <typename Result, typename Result::ErrorCode DefaultErrorValue>
-class ErrorCode final {
+class ErrorStatus final {
 public:
   using Value = typename Result::ErrorCode;
 
-  ErrorCode() = default;
-  ErrorCode(typename Result::ErrorCode value) : error_value(value) {}
+  ErrorStatus() = default;
+  ErrorStatus(typename Result::ErrorCode value) : error_value(value) {}
 
   typename Result::ErrorCode value() const { return error_value; }
 

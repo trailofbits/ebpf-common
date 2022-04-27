@@ -10,7 +10,7 @@
 
 #include <memory>
 
-#include <tob/error/error.h>
+#include <tob/error/stringerror.h>
 
 namespace tob::utils {
 class IELFImage {
