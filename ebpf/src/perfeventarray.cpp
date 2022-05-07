@@ -22,7 +22,11 @@
 #include <tob/ebpf/typedbpfmap.h>
 
 namespace tob::ebpf {
+
+const std::size_t kPerfEventHeaderSize{sizeof(struct perf_event_header)};
+
 namespace {
+
 using PerfEventArrayMap =
     TypedBPFMap<BPF_MAP_TYPE_PERF_EVENT_ARRAY, std::uint32_t, int>;
 
@@ -37,6 +41,7 @@ static const auto kPerfDataOffsetOffset =
 
 static const auto kPerfDataHeadOffset =
     offsetof(struct perf_event_mmap_page, data_head);
+
 } // namespace
 
 struct PerfEventArray::PrivateData final {
@@ -70,11 +75,11 @@ std::size_t PerfEventArray::memoryUsage() const {
 
 int PerfEventArray::fd() const { return d->perf_event_array_map->fd(); }
 
-bool PerfEventArray::read(std::vector<std::uint8_t> &buffer,
+bool PerfEventArray::read(BufferList &buffer_list,
                           std::size_t &read_error_count,
                           std::size_t &lost_event_count,
                           const std::chrono::milliseconds &timeout) {
-  buffer = {};
+  buffer_list.clear();
 
   read_error_count = 0U;
   lost_event_count = 0U;
@@ -120,7 +125,12 @@ bool PerfEventArray::read(std::vector<std::uint8_t> &buffer,
       std::memcpy(&event_header, perf_buffer.data(), sizeof(event_header));
 
       if (event_header.type == PERF_RECORD_LOST) {
+        // TODO: We can read how many records we lost here
         ++lost_event_count;
+        continue;
+
+      } else if (event_header.type != PERF_RECORD_SAMPLE) {
+        ++read_error_count;
         continue;
       }
 
@@ -140,10 +150,7 @@ bool PerfEventArray::read(std::vector<std::uint8_t> &buffer,
         continue;
       }
 
-      auto perf_record_data_ptr = perf_record_size_ptr + sizeof(std::uint32_t);
-
-      buffer.insert(buffer.end(), perf_record_data_ptr,
-                    perf_record_data_ptr + perf_record_size);
+      buffer_list.push_back(std::move(perf_buffer));
     }
   }
 
@@ -192,16 +199,15 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
   }
 }
 
-PerfEventArray::PerfBufferList
+PerfEventArray::BufferList
 PerfEventArray::readPerfMemory(std::size_t processor_index) {
-  PerfBufferList buffer_list;
+  BufferList buffer_list;
 
   if (processor_index > d->perf_event_output_list.size()) {
     return buffer_list;
   }
 
   auto &perf_event_output = d->perf_event_output_list.at(processor_index);
-
   auto perf_header_memory = perf_event_output.memory->pointer();
 
   std::uint64_t data_size{0U};

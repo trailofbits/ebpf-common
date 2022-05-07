@@ -16,6 +16,9 @@
 #include <tob/error/stringerror.h>
 
 namespace tob::ebpf {
+
+extern const std::size_t kPerfEventHeaderSize;
+
 class PerfEventArray final {
 public:
   using Ref = std::unique_ptr<PerfEventArray>;
@@ -27,7 +30,10 @@ public:
 
   int fd() const;
 
-  bool read(std::vector<std::uint8_t> &buffer, std::size_t &read_error_count,
+  using Buffer = std::vector<std::uint8_t>;
+  using BufferList = std::vector<Buffer>;
+
+  bool read(BufferList &buffer_list, std::size_t &read_error_count,
             std::size_t &lost_event_count,
             const std::chrono::milliseconds &timeout =
                 std::chrono::milliseconds(1000U));
@@ -39,11 +45,8 @@ private:
   struct PrivateData;
   std::unique_ptr<PrivateData> d;
 
-  using PerfBuffer = std::vector<std::uint8_t>;
-  using PerfBufferList = std::vector<PerfBuffer>;
-
   PerfEventArray(std::size_t perf_event_output_page_exp);
-
-  PerfBufferList readPerfMemory(std::size_t processor_index);
+  BufferList readPerfMemory(std::size_t processor_index);
 };
+
 } // namespace tob::ebpf
