@@ -51,6 +51,9 @@ function(ebpfCommonEbpf)
 
     src/uprobeperfevent.h
     src/uprobeperfevent.cpp
+
+    include/tob/ebpf/feature_detect.h
+    src/feature_detect.cpp
   )
 
   target_include_directories(ebpf PUBLIC include)

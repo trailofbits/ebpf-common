@@ -20,7 +20,7 @@ StringErrorOr<KernelVersion> getKernelVersion() {
     return StringError::create("Failed to acquire the system information");
   }
 
-  std::sscanf(system_info.release, "%d.%d", &kernel_version.major,
+  std::sscanf(system_info.release, "%u.%u", &kernel_version.major,
               &kernel_version.minor);
 
   return kernel_version;
