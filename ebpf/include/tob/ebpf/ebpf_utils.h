@@ -23,6 +23,9 @@ createPerfEventOutputForCPU(std::size_t processor_index,
 
 StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
                                            IPerfEvent &perf_event);
+StringErrorOr<utils::UniqueFd>
+loadProgram(const BPFProgram &program,
+            bpf_prog_type program_type = BPF_PROG_TYPE_UNSPEC);
 
 StringErrorOr<std::uint32_t> getLinuxKernelVersionCode();
 } // namespace tob::ebpf

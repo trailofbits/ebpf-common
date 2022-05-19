@@ -332,9 +332,7 @@ createPerfEventOutputForCPU(std::size_t processor_index,
 
 StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
                                            IPerfEvent &perf_event) {
-
-  bpf_prog_type program_type{};
-  std::uint32_t linux_version{};
+  bpf_prog_type program_type;
 
   switch (perf_event.type()) {
   case IPerfEvent::Type::Tracepoint: {
@@ -347,19 +345,44 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
   case IPerfEvent::Type::Uprobe:
   case IPerfEvent::Type::Uretprobe: {
     program_type = BPF_PROG_TYPE_KPROBE;
-
-    auto linux_version_exp = getLinuxKernelVersionCode();
-    if (!linux_version_exp.succeeded()) {
-      return linux_version_exp.error();
-    }
-
-    linux_version = linux_version_exp.takeValue();
     break;
   }
 
   default: {
     return StringError::create("Unsupported perf event type");
   }
+  }
+
+  auto output_exp = loadProgram(program, program_type);
+  if (!output_exp.succeeded()) {
+    return output_exp;
+  }
+
+  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_SET_BPF, output_exp->get()) < 0) {
+    return StringError::create(
+        "Failed to attach the BPF program to the perf event. Errno: " +
+        std::to_string(errno));
+  }
+
+  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_ENABLE, 0) < 0) {
+    return StringError::create("Failed to enable the perf event. Errno: " +
+                               std::to_string(errno));
+  }
+
+  return output_exp;
+}
+
+StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
+                                           bpf_prog_type program_type) {
+  std::uint32_t linux_version{};
+
+  if (program_type == BPF_PROG_TYPE_KPROBE) {
+    auto linux_version_exp = getLinuxKernelVersionCode();
+    if (!linux_version_exp.succeeded()) {
+      return linux_version_exp.error();
+    }
+
+    linux_version = linux_version_exp.takeValue();
   }
 
   // Load the program
@@ -410,17 +433,6 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
     error_message += " errno was set to " + std::to_string(errno);
 
     return StringError::create(error_message);
-  }
-
-  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_SET_BPF, output.get()) < 0) {
-    return StringError::create(
-        "Failed to attach the BPF program to the perf event. Errno: " +
-        std::to_string(errno));
-  }
-
-  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_ENABLE, 0) < 0) {
-    return StringError::create("Failed to enable the perf event. Errno: " +
-                               std::to_string(errno));
   }
 
   return output;
