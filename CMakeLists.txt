@@ -7,18 +7,11 @@
 #
 
 cmake_minimum_required(VERSION 3.22.1)
-
-# This is normally set by project(), but it's needed by options.cmake
-# which is called before that.
-set(PROJECT_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}")
+project("ebpf-common")
 
 include("cmake/options.cmake")
 include("cmake/sanitizers.cmake")
-include("cmake/utils.cmake")
-
-project("ebpf-common")
-
-generateSettingsTargets()
+include("cmake/settings.cmake")
 
 add_subdirectory("libraries")
 add_subdirectory("ebpf")
@@ -28,7 +21,7 @@ add_subdirectory("utils")
 if(EBPF_COMMON_ENABLE_TESTS)
   message(STATUS "ebpf-common - Tests are enabled")
 
-  add_executable(ebpf-common-tests
+  add_executable("ebpf-common-tests"
     tests/main.cpp
 
     tests/bpfmap.cpp
@@ -41,17 +34,15 @@ if(EBPF_COMMON_ENABLE_TESTS)
     tests/uniqueref.cpp
   )
 
-  target_link_libraries(ebpf-common-tests PRIVATE
-    cxx_target_settings
-
-    thirdparty_doctest
-
-    ebpf
-    error
-    utils
+  target_link_libraries("ebpf-common-tests" PRIVATE
+    "ebpfcommon_cxx_settings"
+    "ebpf"
+    "error"
+    "utils"
+    "external::doctest"
   )
 
-  target_include_directories(ebpf-common-tests PRIVATE
+  target_include_directories("ebpf-common-tests" PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}"
   )
 

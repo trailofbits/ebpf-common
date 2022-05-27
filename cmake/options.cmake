@@ -13,38 +13,12 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release" AND
   set(default_cmake_build_type "RelWithDebInfo")
 
   if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
-    message(WARNING "Invalid build type specified: ${CMAKE_BUILD_TYPE}")
+    message(WARNING "ebpf-common - Invalid build type specified: ${CMAKE_BUILD_TYPE}")
   endif()
 
-  message(WARNING "Setting CMAKE_BUILD_TYPE to ${default_cmake_build_type}")
+  message(WARNING "ebpf-common - Setting CMAKE_BUILD_TYPE to ${default_cmake_build_type}")
   set(CMAKE_BUILD_TYPE "${default_cmake_build_type}" CACHE STRING "Build type (default ${default_cmake_build_type})" FORCE)
 endif()
 
-set(EBPF_COMMON_TOOLCHAIN_PATH "" CACHE PATH "Toolchain path")
-
 option(EBPF_COMMON_ENABLE_TESTS "Set to ON to build the tests")
 option(EBPF_COMMON_ENABLE_SANITIZERS "Set to ON to enable sanitizers. Only available when compiling with Clang")
-
-if(NOT "${EBPF_COMMON_TOOLCHAIN_PATH}" STREQUAL "")
-  if(NOT EXISTS "${EBPF_COMMON_TOOLCHAIN_PATH}")
-    message(FATAL_ERROR "ebpf-common - The specified toolchain path is not valid: ${EBPF_COMMON_TOOLCHAIN_PATH}")
-  endif()
-
-  set(default_libcpp_setting true)
-
-  set(CMAKE_C_COMPILER "${EBPF_COMMON_TOOLCHAIN_PATH}/usr/bin/clang" CACHE PATH "Path to the C compiler" FORCE)
-  set(CMAKE_CXX_COMPILER "${EBPF_COMMON_TOOLCHAIN_PATH}/usr/bin/clang++" CACHE PATH "Path to the C++ compiler" FORCE)
-
-  set(CMAKE_SYSROOT "${EBPF_COMMON_TOOLCHAIN_PATH}" CACHE PATH "CMake sysroot for find_package scripts")
-
-  message(STATUS "ebpf-common - Toolchain enabled")
-else()
-  set(default_libcpp_setting false)
-  message(STATUS "ebpf-common - Toolchain disabled")
-endif()
-
-option(EBPF_COMMON_ENABLE_LIBCPP "Set to ON to build with libc++" ${default_libcpp_setting})
-
-if("${PROJECT_SOURCE_DIR}" STREQUAL "${CMAKE_SOURCE_DIR}")
-  set(EBPF_COMMON_ZLIB_LIBRARY_PATH "" CACHE FILEPATH "Specifies the path of the zlib library file to use. If left empty the system one will be used")
-endif()

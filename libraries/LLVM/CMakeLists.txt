@@ -8,6 +8,8 @@
 
 find_package(LLVM REQUIRED CONFIG)
 
+set(EBPF_COMMON_ZLIB_LIBRARY_PATH "" CACHE FILEPATH "Specifies the path of the zlib library file to use. If left empty the system one will be used")
+
 set(llvm_component_list
   core
   bpfcodegen
@@ -77,14 +79,14 @@ if(NOT "${EBPF_COMMON_ZLIB_LIBRARY_PATH}" STREQUAL "")
   endforeach()
 endif()
 
-add_library(thirdparty_llvm INTERFACE)
-target_link_libraries(thirdparty_llvm INTERFACE ${llvm_library_list})
+add_library("thirdparty_llvm" INTERFACE)
+target_link_libraries("thirdparty_llvm" INTERFACE ${llvm_library_list})
 
-target_include_directories(thirdparty_llvm SYSTEM INTERFACE
+target_include_directories("thirdparty_llvm" SYSTEM INTERFACE
   ${LLVM_INCLUDE_DIRS}
 )
 
-target_compile_definitions(thirdparty_llvm INTERFACE
+target_compile_definitions("thirdparty_llvm" INTERFACE
   ${LLVM_DEFINITIONS}
   LLVM_VERSION_MAJOR=${LLVM_VERSION_MAJOR}
   LLVM_VERSION_MINOR=${LLVM_VERSION_MINOR}
@@ -92,7 +94,9 @@ target_compile_definitions(thirdparty_llvm INTERFACE
 
 # Ubuntu/Debian workaround
 if(EXISTS "/usr/include/llvm-${LLVM_VERSION_MAJOR}")
-  target_include_directories(thirdparty_llvm SYSTEM INTERFACE
+  target_include_directories("thirdparty_llvm" SYSTEM INTERFACE
     "/usr/include/llvm-${LLVM_VERSION_MAJOR}"
   )
 endif()
+
+add_library("external::llvm" ALIAS "thirdparty_llvm")

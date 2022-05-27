@@ -95,18 +95,27 @@ jobs:
         echo ::set-output name=CMAKE_BINARY::$(realpath $(find cmake* -type d -name bin)/cmake)
 
     - name: Configure the project
+
+      env:
+        TOOLCHAIN_PATH: ${{ steps.osquery_toolchain_installer.outputs.PATH }}
+
       run: |
         export CCACHE_DIR="$(realpath ccache)"
 
         ${{ steps.cmake_installer.outputs.CMAKE_BINARY }} \
           -G Ninja \
-          -DEBPF_COMMON_TOOLCHAIN_PATH:PATH=${{ steps.osquery_toolchain_installer.outputs.PATH }} \
+          -DCMAKE_TOOLCHAIN_FILE=cmake/toolchain.cmake \
           -DCMAKE_BUILD_TYPE:STRING=${{ matrix.build_type }} \
-          -DEBPF_COMMON_ENABLE_TESTS:BOOL=true -DEBPF_COMMON_ENABLE_SANITIZERS:BOOL=true \
+          -DEBPF_COMMON_ENABLE_TESTS:BOOL=true \
+          -DEBPF_COMMON_ENABLE_SANITIZERS:BOOL=true \
           -S . \
           -B build
 
     - name: Build the project
+
+      env:
+        TOOLCHAIN_PATH: ${{ steps.osquery_toolchain_installer.outputs.PATH }}
+
       run: |
         export CCACHE_DIR="$(realpath ccache)"
 
@@ -115,6 +124,10 @@ jobs:
           -- -v
 
     - name: Run the tests
+
+      env:
+        TOOLCHAIN_PATH: ${{ steps.osquery_toolchain_installer.outputs.PATH }}
+
       run: |
         sudo ${{ steps.cmake_installer.outputs.CMAKE_BINARY }} \
           --build build \

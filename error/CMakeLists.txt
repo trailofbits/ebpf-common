@@ -6,5 +6,7 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-add_library(error INTERFACE)
-target_include_directories(error INTERFACE include)
+add_library("error" INTERFACE)
+target_include_directories("error" INTERFACE
+  include
+)

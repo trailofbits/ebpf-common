@@ -6,7 +6,7 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-add_library(ebpf OBJECT
+add_library("ebpf" OBJECT
   include/tob/ebpf/bpfmap.h
   include/tob/ebpf/types.h
   include/tob/ebpf/typedbpfmap.h
@@ -58,16 +58,16 @@ add_library(ebpf OBJECT
   src/bufferreader.cpp
 )
 
-target_include_directories(ebpf PUBLIC include)
+target_include_directories("ebpf" PUBLIC include)
 
-target_link_libraries(ebpf
+target_link_libraries("ebpf"
   PRIVATE
-    cxx_target_settings
+    "ebpfcommon_cxx_settings"
 
   PUBLIC
-    thirdparty_llvm
-    thirdparty_libbpf
-    error
-    utils
-    btfparse
+    "error"
+    "utils"
+    "btfparse"
+    "external::llvm"
+    "external::bpf"
 )

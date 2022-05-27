@@ -6,7 +6,9 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-add_library(thirdparty_libbpf INTERFACE)
-target_include_directories(thirdparty_libbpf SYSTEM INTERFACE
+add_library("thirdparty_libbpf" INTERFACE)
+target_include_directories("thirdparty_libbpf" SYSTEM INTERFACE
   "${CMAKE_CURRENT_SOURCE_DIR}/src/include/uapi"
 )
+
+add_library("external::bpf" ALIAS "thirdparty_libbpf")
