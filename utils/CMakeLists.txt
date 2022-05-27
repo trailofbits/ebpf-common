@@ -6,7 +6,7 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-add_library(utils OBJECT
+add_library("utils" OBJECT
   include/tob/utils/uniqueref.h
 
   include/tob/utils/uniquefd.h
@@ -26,12 +26,14 @@ add_library(utils OBJECT
   src/kernel.cpp
 )
 
-target_include_directories(utils PUBLIC include)
+target_include_directories("utils" PUBLIC
+  include
+)
 
-target_link_libraries(utils
+target_link_libraries("utils"
   PRIVATE
-    cxx_target_settings
+    "ebpfcommon_cxx_settings"
 
   PUBLIC
-    error
+    "error"
 )

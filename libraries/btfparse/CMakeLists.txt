@@ -7,3 +7,4 @@
 #
 
 add_subdirectory("src" EXCLUDE_FROM_ALL)
+add_library("external::btfparse" ALIAS "btfparse")
