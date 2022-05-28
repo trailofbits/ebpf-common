@@ -24,6 +24,9 @@ add_library("utils" OBJECT
 
   include/tob/utils/kernel.h
   src/kernel.cpp
+
+  include/tob/utils/bufferreader.h
+  src/bufferreader.cpp
 )
 
 target_include_directories("utils" PUBLIC
