@@ -53,9 +53,6 @@ add_library("ebpf" OBJECT
 
   src/uprobeperfevent.h
   src/uprobeperfevent.cpp
-
-  include/tob/ebpf/bufferreader.h
-  src/bufferreader.cpp
 )
 
 target_include_directories("ebpf" PUBLIC include)

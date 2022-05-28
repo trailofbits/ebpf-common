@@ -14,7 +14,7 @@
 
 #include <tob/error/stringerror.h>
 
-namespace tob::ebpf {
+namespace tob::utils {
 
 class BufferReader final {
 public:
@@ -60,4 +60,4 @@ private:
   BufferReader();
 };
 
-} // namespace tob::ebpf
+} // namespace tob::utils

@@ -6,11 +6,11 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include <tob/ebpf/bufferreader.h>
+#include <tob/utils/bufferreader.h>
 
 #include <cstring>
 
-namespace tob::ebpf {
+namespace tob::utils {
 
 namespace {
 
@@ -146,4 +146,4 @@ std::size_t BufferReader::availableBytes() const {
 
 BufferReader::BufferReader() : d(new PrivateData) { reset(nullptr, 0); }
 
-} // namespace tob::ebpf
+} // namespace tob::utils
