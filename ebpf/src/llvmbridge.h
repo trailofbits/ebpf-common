@@ -28,11 +28,19 @@ public:
   virtual Result<llvm::Type *, LLVMBridgeError>
   getType(const std::string &name) const override;
 
-  /// \copydoc ILLVMBridge::read
-  virtual std::optional<LLVMBridgeError>
-  read(llvm::IRBuilder<> &builder, llvm::Value *dest, llvm::Value *src,
-       const std::string &path,
-       llvm::BasicBlock *read_failed_bb) const override;
+  /// \copydoc ILLVMBridge::getElementPtr
+  virtual Result<ElementPtr, LLVMBridgeError>
+  getElementPtr(llvm::IRBuilder<> &builder, llvm::Value *opaque_pointer,
+                llvm::Type *pointer_type, const std::string &path,
+                llvm::Value *temp_storage,
+                llvm::BasicBlock *read_failed_bb) const override;
+
+  /// \copydoc ILLVMBridge::getElementPtr
+  virtual Result<ElementPtr, LLVMBridgeError>
+  getElementPtr(llvm::IRBuilder<> &builder, llvm::Value *opaque_pointer,
+                const std::string &pointer_type_name, const std::string &path,
+                llvm::Value *temp_storage,
+                llvm::BasicBlock *read_failed_bb) const override;
 
 private:
   /// Imports all the BTF types into the active LLVM context
@@ -125,6 +133,12 @@ public:
 
   /// Instance data
   std::unique_ptr<Context> d;
+
+  static Result<ElementPtr, LLVMBridgeError>
+  getElementPtr(Context &context, llvm::IRBuilder<> &builder,
+                llvm::Value *opaque_pointer, llvm::Type *pointer_type,
+                std::uint32_t pointer_btf_type_id, const std::string &path,
+                llvm::Value *temp_storage, llvm::BasicBlock *read_failed_bb);
 
   /// \copydoc LLVMBridge::getType
   static Result<llvm::Type *, LLVMBridgeError> getType(const Context &context,
