@@ -22,3 +22,5 @@ endif()
 
 option(EBPF_COMMON_ENABLE_TESTS "Set to ON to build the tests")
 option(EBPF_COMMON_ENABLE_SANITIZERS "Set to ON to enable sanitizers. Only available when compiling with Clang")
+
+set(CMAKE_EXPORT_COMPILE_COMMANDS true CACHE BOOL "Export the compile_commands.json file (forced)" FORCE)

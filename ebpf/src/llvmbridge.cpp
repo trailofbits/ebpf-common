@@ -369,6 +369,184 @@ std::optional<LLVMBridgeError> LLVMBridge::preprocessUnionType(
   return std::nullopt;
 }
 
+Result<LLVMBridge::ElementPtr, LLVMBridgeError>
+LLVMBridge::getElementPtr(Context &context, llvm::IRBuilder<> &builder,
+                          llvm::Value *opaque_pointer, llvm::Type *pointer_type,
+                          std::uint32_t pointer_btf_type_id,
+                          const std::string &path, llvm::Value *temp_storage,
+                          llvm::BasicBlock *read_failed_bb) {
+  opaque_pointer = builder.CreateBitOrPointerCast(opaque_pointer,
+                                                  pointer_type->getPointerTo());
+
+  auto syscall_interface_exp = BPFSyscallInterface::create(builder);
+  if (!syscall_interface_exp.succeeded()) {
+    return LLVMBridgeError(LLVMBridgeErrorCode::InternalError);
+  }
+
+  auto syscall_interface = syscall_interface_exp.takeValue();
+
+  auto current_bb = builder.GetInsertBlock();
+  auto function = current_bb->getParent();
+
+  auto &module = *current_bb->getModule();
+  auto &llvm_context = module.getContext();
+
+  auto opt_path_component_list = parsePath(path);
+  if (!opt_path_component_list.has_value()) {
+    return LLVMBridgeError(LLVMBridgeErrorCode::InvalidPath);
+  }
+
+  const auto &path_component_list = opt_path_component_list.value();
+
+  for (auto path_comp_it = path_component_list.begin();
+       path_comp_it != path_component_list.end(); ++path_comp_it) {
+
+    const auto &path_component = *path_comp_it;
+
+    auto is_last_path_comp =
+        std::next(path_comp_it, 1) == path_component_list.end();
+
+    if (!path_component.name.empty()) {
+      auto opt_structure_mapping =
+          locate(context, pointer_btf_type_id, path_component.name);
+
+      if (!opt_structure_mapping.has_value()) {
+        return LLVMBridgeError(LLVMBridgeErrorCode::InvalidPath);
+      }
+
+      const auto &structure_mapping = opt_structure_mapping.value();
+
+      for (auto mapping_it = structure_mapping.begin();
+           mapping_it != structure_mapping.end(); ++mapping_it) {
+
+        const auto &mapping = *mapping_it;
+
+        opaque_pointer = builder.CreateGEP(
+            pointer_type, opaque_pointer,
+            {builder.getInt32(0), builder.getInt32(mapping.index)});
+
+        pointer_btf_type_id = mapping.type;
+        pointer_type = context.btf_type_id_to_llvm.at(pointer_btf_type_id);
+
+        if (structure_mapping.back().opt_mask.has_value()) {
+          auto is_last_mapping =
+              std::next(mapping_it, 1) == structure_mapping.end();
+
+          if (!is_last_path_comp || !is_last_mapping) {
+            return LLVMBridgeError(LLVMBridgeErrorCode::InvalidPath);
+          }
+        }
+      }
+    }
+
+    // Arrays
+    if (!path_component.index_list.empty()) {
+      auto btf_type_it = context.btf_type_map.find(pointer_btf_type_id);
+      if (btf_type_it == context.btf_type_map.end()) {
+        return LLVMBridgeError(LLVMBridgeErrorCode::InvalidPath);
+      }
+
+      const auto &btf_type = btf_type_it->second;
+      if (std::holds_alternative<btfparse::PtrBTFType>(btf_type)) {
+        // Dereference this pointer so that we get to the array itself
+        const auto &ptr_btf_type = std::get<btfparse::PtrBTFType>(btf_type);
+
+        if (temp_storage == nullptr) {
+          return LLVMBridgeError(LLVMBridgeErrorCode::TempStorageRequired);
+        }
+
+        auto read_status = syscall_interface->probeRead(
+            temp_storage, builder.getInt64(sizeof(void *)), opaque_pointer);
+
+        auto cond = builder.CreateICmpEQ(builder.getInt64(0U), read_status);
+
+        auto read_succeeded_bb =
+            llvm::BasicBlock::Create(llvm_context, "read_succeeded", function);
+
+        if (read_failed_bb == nullptr) {
+          read_failed_bb =
+              llvm::BasicBlock::Create(llvm_context, "read_failed", function);
+
+          builder.SetInsertPoint(read_failed_bb);
+          builder.CreateRet(builder.getInt64(0));
+
+          builder.SetInsertPoint(current_bb);
+        }
+
+        builder.CreateCondBr(cond, read_succeeded_bb, read_failed_bb);
+        builder.SetInsertPoint(read_succeeded_bb);
+
+        opaque_pointer = builder.CreateLoad(pointer_type, temp_storage);
+        pointer_btf_type_id = ptr_btf_type.type;
+        pointer_type = context.btf_type_id_to_llvm.at(ptr_btf_type.type);
+
+        opaque_pointer = builder.CreateBitOrPointerCast(
+            opaque_pointer, pointer_type->getPointerTo());
+      }
+
+      std::vector<llvm::Value *> index_list = {builder.getInt32(0)};
+      for (const auto &index : path_component.index_list) {
+        index_list.push_back(builder.getInt32(index));
+      }
+
+      opaque_pointer =
+          builder.CreateGEP(pointer_type, opaque_pointer, index_list);
+
+      const auto &array_btf_type = std::get<btfparse::ArrayBTFType>(btf_type);
+      pointer_btf_type_id = array_btf_type.type;
+      pointer_type = context.btf_type_id_to_llvm.at(pointer_btf_type_id);
+    }
+
+    // This may be a pointer again; dereference it if we still have other
+    // path components to handle
+    if (!is_last_path_comp) {
+      auto btf_type_it = context.btf_type_map.find(pointer_btf_type_id);
+      if (btf_type_it == context.btf_type_map.end()) {
+        return LLVMBridgeError(LLVMBridgeErrorCode::InvalidPath);
+      }
+
+      const auto &btf_type = btf_type_it->second;
+      if (std::holds_alternative<btfparse::PtrBTFType>(btf_type)) {
+        const auto &ptr_btf_type = std::get<btfparse::PtrBTFType>(btf_type);
+
+        if (temp_storage == nullptr) {
+          return LLVMBridgeError(LLVMBridgeErrorCode::TempStorageRequired);
+        }
+
+        auto read_status = syscall_interface->probeRead(
+            temp_storage, builder.getInt64(sizeof(void *)), opaque_pointer);
+
+        auto cond = builder.CreateICmpEQ(builder.getInt64(0U), read_status);
+
+        auto read_succeeded_bb =
+            llvm::BasicBlock::Create(llvm_context, "read_succeeded", function);
+
+        if (read_failed_bb == nullptr) {
+          read_failed_bb =
+              llvm::BasicBlock::Create(llvm_context, "read_failed", function);
+
+          builder.SetInsertPoint(read_failed_bb);
+          builder.CreateRet(builder.getInt64(0));
+
+          builder.SetInsertPoint(current_bb);
+        }
+
+        builder.CreateCondBr(cond, read_succeeded_bb, read_failed_bb);
+        builder.SetInsertPoint(read_succeeded_bb);
+
+        opaque_pointer = builder.CreateLoad(pointer_type, temp_storage);
+        pointer_btf_type_id = ptr_btf_type.type;
+        pointer_type = context.btf_type_id_to_llvm.at(ptr_btf_type.type);
+
+        opaque_pointer = builder.CreateBitOrPointerCast(
+            opaque_pointer, pointer_type->getPointerTo());
+      }
+    }
+  }
+
+  return ElementPtr{pointer_btf_type_id, pointer_type, opaque_pointer};
+}
+
 std::optional<LLVMBridge::PathComponentList>
 LLVMBridge::parsePath(const std::string &path) {
 
@@ -645,107 +823,43 @@ LLVMBridge::generatePaddingStructMember(Context &context, std::uint32_t size,
   return padding;
 }
 
-std::optional<LLVMBridgeError>
-LLVMBridge::read(llvm::IRBuilder<> &builder, llvm::Value *dest,
-                 llvm::Value *src, const std::string &path,
-                 llvm::BasicBlock *read_failed_bb) const {
+Result<LLVMBridge::ElementPtr, LLVMBridgeError>
+LLVMBridge::getElementPtr(llvm::IRBuilder<> &builder,
+                          llvm::Value *opaque_pointer, llvm::Type *pointer_type,
+                          const std::string &path, llvm::Value *temp_storage,
+                          llvm::BasicBlock *read_failed_bb) const {
 
-  auto opt_path_component_list = parsePath(path);
-  if (!opt_path_component_list.has_value()) {
-    return LLVMBridgeError(LLVMBridgeErrorCode::InvalidStructurePath);
+  auto btf_type_id_it = d->llvm_to_btf_type_id.find(pointer_type);
+  if (btf_type_id_it == d->llvm_to_btf_type_id.end()) {
+    return LLVMBridgeError(LLVMBridgeErrorCode::UnsupportedBTFType);
   }
 
-  const auto &path_component_list = opt_path_component_list.value();
+  auto btf_type_id = btf_type_id_it->second;
+  return getElementPtr(*d.get(), builder, opaque_pointer, pointer_type,
+                       btf_type_id, path, temp_storage, read_failed_bb);
+}
 
-  auto pointer_type = src->getType();
-  if (!pointer_type->isPointerTy()) {
-    return LLVMBridgeError(LLVMBridgeErrorCode::NotAStructPointer);
+Result<LLVMBridge::ElementPtr, LLVMBridgeError> LLVMBridge::getElementPtr(
+    llvm::IRBuilder<> &builder, llvm::Value *opaque_pointer,
+    const std::string &pointer_type_name, const std::string &path,
+    llvm::Value *temp_storage, llvm::BasicBlock *read_failed_bb) const {
+
+  auto btf_type_id_it = d->name_to_btf_type_id.find(pointer_type_name);
+  if (btf_type_id_it == d->name_to_btf_type_id.end()) {
+    return LLVMBridgeError(LLVMBridgeErrorCode::UnsupportedBTFType);
   }
 
-  auto pointee_type = pointer_type->getPointerElementType();
-  auto pointer = src;
+  auto btf_type_id = btf_type_id_it->second;
 
-  StructFieldMapping::OptionalMask opt_mask;
-
-  for (const auto &path_component : path_component_list) {
-    auto btf_type_id_it = d->llvm_to_btf_type_id.find(pointee_type);
-    if (btf_type_id_it == d->llvm_to_btf_type_id.end()) {
-      return LLVMBridgeError(LLVMBridgeErrorCode::NotAStructPointer);
-    }
-
-    auto btf_type_id = btf_type_id_it->second;
-
-    if (!path_component.name.empty()) {
-      auto opt_structure_mapping =
-          locate(*d.get(), btf_type_id, path_component.name);
-
-      if (!opt_structure_mapping.has_value()) {
-        return LLVMBridgeError(LLVMBridgeErrorCode::NotAStructPointer);
-      }
-
-      const auto &structure_mapping = opt_structure_mapping.value();
-
-      for (const auto &mapping : structure_mapping) {
-        btf_type_id = mapping.type;
-        pointee_type = d->btf_type_id_to_llvm.at(btf_type_id);
-
-        pointer = builder.CreateGEP(
-            pointer, {builder.getInt32(0), builder.getInt32(mapping.index)});
-
-        if (mapping.as_union) {
-          pointee_type = d->btf_type_id_to_llvm.at(btf_type_id);
-
-          pointer =
-              builder.CreateBitCast(pointer, pointee_type->getPointerTo());
-        }
-      }
-
-      opt_mask = structure_mapping.back().opt_mask;
-    }
-
-    if (!path_component.index_list.empty()) {
-      std::vector<llvm::Value *> index_list = {builder.getInt32(0)};
-
-      for (const auto &index : path_component.index_list) {
-        index_list.push_back(builder.getInt32(index));
-      }
-
-      pointer = builder.CreateGEP(pointer, index_list);
-    }
+  auto pointer_type_it = d->btf_type_id_to_llvm.find(btf_type_id);
+  if (pointer_type_it == d->btf_type_id_to_llvm.end()) {
+    return LLVMBridgeError(LLVMBridgeErrorCode::UnsupportedBTFType);
   }
 
-  auto syscall_interface_exp = BPFSyscallInterface::create(builder);
-  if (!syscall_interface_exp.succeeded()) {
-    return LLVMBridgeError(LLVMBridgeErrorCode::InternalError);
-  }
+  auto pointer_type = pointer_type_it->second;
 
-  auto syscall_interface = syscall_interface_exp.takeValue();
-
-  auto current_bb = builder.GetInsertBlock();
-  auto function = current_bb->getParent();
-
-  auto &module = *current_bb->getModule();
-  auto &context = module.getContext();
-
-  auto dest_size =
-      static_cast<std::uint32_t>(ebpf::getTypeSize(module, dest->getType()));
-
-  auto read_status =
-      syscall_interface->probeRead(dest, builder.getInt64(dest_size), pointer);
-
-  auto cond = builder.CreateICmpEQ(builder.getInt64(0U), read_status);
-
-  auto read_succeeded_bb =
-      llvm::BasicBlock::Create(context, "read_succeeded", function);
-
-  builder.CreateCondBr(cond, read_succeeded_bb, read_failed_bb);
-  builder.SetInsertPoint(read_succeeded_bb);
-
-  if (opt_mask.has_value()) {
-    throw std::runtime_error("Not yet supported: accessing bitfields");
-  }
-
-  return std::nullopt;
+  return getElementPtr(*d.get(), builder, opaque_pointer, pointer_type,
+                       btf_type_id, path, temp_storage, read_failed_bb);
 }
 
 std::optional<LLVMBridgeError> LLVMBridge::importAllTypes() {

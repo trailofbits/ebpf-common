@@ -22,6 +22,7 @@ enum class LLVMBridgeErrorCode {
   Unknown,
   MemoryAllocationFailure,
   UnsupportedBTFType,
+  NotAPointer,
   MissingDependency,
   NotFound,
   InvalidStructureMemberOffset,
@@ -34,6 +35,8 @@ enum class LLVMBridgeErrorCode {
   InvalidBTFType,
   StructurePaddingError,
   BitfieldError,
+  InvalidPath,
+  TempStorageRequired,
 };
 
 /// LLVMBridgeErrorCode printer
@@ -59,10 +62,31 @@ public:
   virtual btfparse::Result<llvm::Type *, LLVMBridgeError>
   getType(const std::string &name) const = 0;
 
-  /// Reads the `path` value from `src` into `dest`
-  virtual std::optional<LLVMBridgeError>
-  read(llvm::IRBuilder<> &builder, llvm::Value *dest, llvm::Value *src,
-       const std::string &path, llvm::BasicBlock *read_failed_bb) const = 0;
+  /// getElementPtr output
+  struct ElementPtr final {
+    /// BTF type id
+    std::uint32_t btf_type_id{};
+
+    /// The LLVM type of the opaque pointer
+    llvm::Type *pointer_type{nullptr};
+
+    /// The opaque pointer
+    llvm::Value *opaque_pointer{nullptr};
+  };
+
+  /// Obtains a pointer to the specified field
+  virtual Result<ElementPtr, LLVMBridgeError>
+  getElementPtr(llvm::IRBuilder<> &builder, llvm::Value *opaque_pointer,
+                llvm::Type *pointer_type, const std::string &path,
+                llvm::Value *temp_storage = nullptr,
+                llvm::BasicBlock *read_failed_bb = nullptr) const = 0;
+
+  /// Obtains a pointer to the specified field
+  virtual Result<ElementPtr, LLVMBridgeError>
+  getElementPtr(llvm::IRBuilder<> &builder, llvm::Value *opaque_pointer,
+                const std::string &pointer_type, const std::string &path,
+                llvm::Value *temp_storage = nullptr,
+                llvm::BasicBlock *read_failed_bb = nullptr) const = 0;
 
   /// Constructor
   ILLVMBridge() = default;
