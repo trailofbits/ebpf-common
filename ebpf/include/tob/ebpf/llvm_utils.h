@@ -17,6 +17,7 @@
 #include <tob/error/stringerror.h>
 
 namespace tob::ebpf {
+
 class LLVMInitializer final {
 public:
   LLVMInitializer();
@@ -38,4 +39,5 @@ std::size_t getTypeSize(llvm::Module &module, llvm::Type *type);
 
 std::optional<std::size_t> getOffsetOf(llvm::Module &module, llvm::Type *type,
                                        std::size_t index);
+
 } // namespace tob::ebpf

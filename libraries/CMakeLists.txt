@@ -9,3 +9,4 @@
 add_subdirectory("libbpf")
 add_subdirectory("LLVM")
 add_subdirectory("btfparse")
+add_subdirectory("Clang")
