@@ -53,6 +53,18 @@ add_library("ebpf" OBJECT
 
   src/uprobeperfevent.h
   src/uprobeperfevent.cpp
+
+  include/tob/ebpf/iclangcompiler.h
+  src/iclangcompiler.cpp
+
+  src/clangcompiler.h
+  src/clangcompiler.cpp
+
+  src/bpf_helpers.h
+  src/ebpf_common_helpers.h
+
+  src/clanginitializer.h
+  src/clanginitializer.cpp
 )
 
 target_include_directories("ebpf" PUBLIC include)
@@ -66,5 +78,6 @@ target_link_libraries("ebpf"
     "utils"
     "btfparse"
     "external::llvm"
+    "external::clang"
     "external::bpf"
 )

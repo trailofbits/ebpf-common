@@ -11,10 +11,15 @@ find_package(LLVM REQUIRED CONFIG)
 set(EBPF_COMMON_ZLIB_LIBRARY_PATH "" CACHE FILEPATH "Specifies the path of the zlib library file to use. If left empty the system one will be used")
 
 set(llvm_component_list
-  core
-  bpfcodegen
-  executionengine
-  mcjit
+  "core"
+  "bpfcodegen"
+  "executionengine"
+  "mcjit"
+  "passes"
+  "option"
+  "coverage"
+  "lto"
+  "coroutines"
 )
 
 if("${CMAKE_SYSTEM_PROCESSOR}" STREQUAL "x86_64")
