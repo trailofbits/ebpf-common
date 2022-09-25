@@ -79,34 +79,33 @@ ClangCompiler::build(const std::string &source_code,
   }
 
   auto llvm_module = llvm_module_exp.takeValue();
-  auto &context = llvm_module->getContext();
-
-  llvm::IRBuilder<> builder(context);
-
-  // clang-format off
-  auto pseudo_intrinsic_type = llvm::FunctionType::get(
-    builder.getInt64Ty(),
-
-    {
-      builder.getInt64Ty(),
-      builder.getInt64Ty()
-    },
-
-    false
-  );
-  // clang-format on
-
-  auto pseudo_intrinsic = llvm::Function::Create(
-      pseudo_intrinsic_type, llvm::GlobalValue::ExternalLinkage,
-      "llvm.bpf.pseudo", *llvm_module.get());
 
   auto llvm_bpf_pseudo_function = llvm_module->getFunction("llvm_bpf_pseudo");
-  if (llvm_bpf_pseudo_function == nullptr) {
-    return StringError::create(
-        "The llvm_bpf_pseudo function definition was not found");
+  if (llvm_bpf_pseudo_function != nullptr) {
+    auto &context = llvm_module->getContext();
+
+    llvm::IRBuilder<> builder(context);
+
+    // clang-format off
+    auto pseudo_intrinsic_type = llvm::FunctionType::get(
+      builder.getInt64Ty(),
+
+      {
+        builder.getInt64Ty(),
+        builder.getInt64Ty()
+      },
+
+      false
+    );
+    // clang-format on
+
+    auto pseudo_intrinsic = llvm::Function::Create(
+        pseudo_intrinsic_type, llvm::GlobalValue::ExternalLinkage,
+        "llvm.bpf.pseudo", *llvm_module.get());
+
+    llvm_bpf_pseudo_function->replaceAllUsesWith(pseudo_intrinsic);
   }
 
-  llvm_bpf_pseudo_function->replaceAllUsesWith(pseudo_intrinsic);
   return createProgramMap(std::move(llvm_module));
 }
 
