@@ -129,6 +129,11 @@ std::string ClangCompiler::generateDefinitionInclude(
 
 ClangCompiler::ClangCompiler(const std::filesystem::path &btf_file_path)
     : d(new PrivateData) {
+
+  llvm::InitializeAllTargetMCs();
+  llvm::InitializeAllAsmPrinters();
+  llvm::InitializeAllTargets();
+
   auto btf_res = btfparse::IBTF::createFromPathList({btf_file_path});
   if (btf_res.failed()) {
     auto error = btf_res.takeError();
