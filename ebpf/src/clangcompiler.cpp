@@ -10,6 +10,7 @@
 #include "bpf_helpers.h"
 #include "ebpf_common_helpers.h"
 
+#include <llvm/ADT/ArrayRef.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Support/Host.h>
 #include <llvm/Support/TargetSelect.h>
@@ -44,23 +45,32 @@ const std::string kBPFHelpersIncludePath{"/internal/bpf_helpers.h"};
 const std::string kEbpfCommonHelpersIncludePath{
     "/internal/ebpf_common_helpers.h"};
 
-const std::vector<const char *> kCommonFlagList{
-    "-O2",
-    "-triple",
-    "bpf-pc-linux",
-    "-Wall",
-    "-Wconversion",
-    "-Wunused",
-    "-Wshadow",
-    "-Werror",
-    "-include",
-    kUserDefinitionsIncludePath.c_str(),
-    "-include",
-    kBtfparseIncludeHeaderPath.c_str(),
-    "-include",
-    kBPFHelpersIncludePath.c_str(),
-    "-include",
-    kEbpfCommonHelpersIncludePath.c_str()};
+// clang-format off
+#if LLVM_VERSION_MAJOR < 11
+  const std::vector<const char *>
+#else
+  llvm::ArrayRef<const char *>
+#endif
+
+kCommonFlagList{
+  "-O2",
+  "-triple",
+  "bpf-pc-linux",
+  "-Wall",
+  "-Wconversion",
+  "-Wunused",
+  "-Wshadow",
+  "-Werror",
+  "-include",
+  kUserDefinitionsIncludePath.c_str(),
+  "-include",
+  kBtfparseIncludeHeaderPath.c_str(),
+  "-include",
+  kBPFHelpersIncludePath.c_str(),
+  "-include",
+  kEbpfCommonHelpersIncludePath.c_str()
+};
+// clang-format on
 
 } // namespace
 
@@ -173,14 +183,28 @@ ClangCompiler::createModule(const std::string &source_code,
       diagnostic_id_list, &diagnostic_options, text_diagnostic_printer);
 
   auto compiler_invocation = std::make_shared<clang::CompilerInvocation>();
+
+#if LLVM_VERSION_MAJOR < 11
   clang::CompilerInvocation::CreateFromArgs(
       *compiler_invocation.get(), &kCommonFlagList[0],
       &kCommonFlagList[0] + kCommonFlagList.size(), *diagnostic_engine);
 
+#else
+  clang::CompilerInvocation::CreateFromArgs(
+      *compiler_invocation.get(), kCommonFlagList, *diagnostic_engine);
+#endif
+
   auto &frontend_options = compiler_invocation->getFrontendOpts();
   frontend_options.Inputs.clear();
+
+#if LLVM_VERSION_MAJOR < 11
   frontend_options.Inputs.push_back(
       clang::FrontendInputFile(kMainFilePath, clang::InputKind::C));
+
+#else
+  frontend_options.Inputs.push_back(clang::FrontendInputFile(
+      kMainFilePath, clang::InputKind(clang::Language::C)));
+#endif
 
   auto &codegen_options = compiler_invocation->getCodeGenOpts();
   codegen_options.setInlining(clang::CodeGenOptions::NormalInlining);
