@@ -62,9 +62,6 @@ add_library("ebpf" OBJECT
 
   src/bpf_helpers.h
   src/ebpf_common_helpers.h
-
-  src/clanginitializer.h
-  src/clanginitializer.cpp
 )
 
 target_include_directories("ebpf" PUBLIC include)
