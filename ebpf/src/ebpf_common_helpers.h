@@ -18,7 +18,7 @@ const std::string kEbpfCommonHelpers{R"src(
 #define bpf_probe_read_struct_member(FunctionName, StructureType, MemberName, structure_ptr, dest_ptr) \
   FunctionName( \
     dest_ptr, \
-    sizeof(dest_ptr), \
+    sizeof(*dest_ptr), \
     ((const u8 *) structure_ptr) + offsetof(StructureType, MemberName))
 
 #define bpf_probe_read_user_struct_member(StructureType, MemberName, structure_ptr, dest_ptr) \
