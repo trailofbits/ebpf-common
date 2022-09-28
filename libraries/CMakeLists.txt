@@ -10,3 +10,7 @@ add_subdirectory("libbpf")
 add_subdirectory("LLVM")
 add_subdirectory("btfparse")
 add_subdirectory("Clang")
+
+if(EBPF_COMMON_ENABLE_TESTS)
+  add_subdirectory("doctest")
+endif()
