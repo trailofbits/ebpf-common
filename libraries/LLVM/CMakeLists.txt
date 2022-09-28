@@ -97,11 +97,4 @@ target_compile_definitions("thirdparty_llvm" INTERFACE
   LLVM_VERSION_MINOR=${LLVM_VERSION_MINOR}
 )
 
-# Ubuntu/Debian workaround
-if(EXISTS "/usr/include/llvm-${LLVM_VERSION_MAJOR}")
-  target_include_directories("thirdparty_llvm" SYSTEM INTERFACE
-    "/usr/include/llvm-${LLVM_VERSION_MAJOR}"
-  )
-endif()
-
 add_library("external::llvm" ALIAS "thirdparty_llvm")

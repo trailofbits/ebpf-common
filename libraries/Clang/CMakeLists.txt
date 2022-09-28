@@ -6,12 +6,11 @@
 # the LICENSE file found in the root directory of this source tree.
 #
 
-add_library("thirdparty_clang" INTERFACE)
-target_link_libraries("thirdparty_clang" INTERFACE
+set(clang_library_name_list
   clangParse
   clangRewrite
   clangRewriteFrontend
-  clangCodeGen
+  
   clangAST
   clangFrontend
   clangBasic
@@ -22,6 +21,25 @@ target_link_libraries("thirdparty_clang" INTERFACE
   clangASTMatchers
   clangEdit
   clangSema
+  clangCodeGen
+)
+
+foreach(clang_library_name ${clang_library_name_list})
+  set(variable_name "${clang_library_name}_path")
+
+  find_library("${variable_name}"
+    "lib${clang_library_name}.a"
+    REQUIRED
+  )
+
+  list(APPEND clang_library_path_list
+    "${${variable_name}}"
+  )
+endforeach()
+
+add_library("thirdparty_clang" INTERFACE)
+target_link_libraries("thirdparty_clang" INTERFACE
+  ${clang_library_path_list}
 )
 
 target_include_directories("thirdparty_clang" SYSTEM INTERFACE
