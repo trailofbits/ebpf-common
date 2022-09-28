@@ -4,3 +4,6 @@
 [submodule "libraries/btfparse/src"]
 	path = libraries/btfparse/src
 	url = https://github.com/trailofbits/btfparse
+[submodule "libraries/doctest/src"]
+	path = libraries/doctest/src
+	url = https://github.com/onqtam/doctest
