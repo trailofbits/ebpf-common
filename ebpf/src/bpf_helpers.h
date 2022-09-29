@@ -14,6 +14,10 @@ namespace tob::ebpf {
 const std::string kBPFHelperDefinitions{R"src(
 struct sk_msg_buff;
 struct bpf_dynptr;
+struct bpf_pidns_info;
+struct btf_ptr;
+struct bpf_redir_neigh;
+struct bpf_timer;
 
 typedef void *(*bpf_map_lookup_elem_t)(struct bpf_map *map, const void *key);
 static bpf_map_lookup_elem_t bpf_map_lookup_elem = (bpf_map_lookup_elem_t) 1;
