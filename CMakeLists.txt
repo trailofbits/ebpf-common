@@ -10,7 +10,6 @@ cmake_minimum_required(VERSION 3.21.4)
 project("ebpf-common")
 
 include("cmake/options.cmake")
-include("cmake/sanitizers.cmake")
 include("cmake/settings.cmake")
 
 add_subdirectory("libraries")

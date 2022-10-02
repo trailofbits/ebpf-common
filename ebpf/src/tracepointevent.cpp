@@ -6,7 +6,7 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include "tracepointperfevent.h"
+#include "tracepointevent.h"
 
 #include <fstream>
 #include <iostream>
@@ -23,27 +23,29 @@ namespace {
 const std::string kTracepointRootPath = "/sys/kernel/debug/tracing/events/";
 } // namespace
 
-struct TracepointPerfEvent::PrivateData final {
+struct TracepointEvent::PrivateData final {
   std::string category;
   std::string name;
   utils::UniqueFd event;
 };
 
-TracepointPerfEvent::~TracepointPerfEvent() {}
+TracepointEvent::~TracepointEvent() {}
 
-TracepointPerfEvent::Type TracepointPerfEvent::type() const {
-  return Type::Tracepoint;
+TracepointEvent::Type TracepointEvent::type() const { return Type::Tracepoint; }
+
+int TracepointEvent::fd() const { return d->event.get(); }
+
+std::string TracepointEvent::name() const {
+  return d->category + ":" + d->name;
 }
 
-int TracepointPerfEvent::fd() const { return d->event.get(); }
+bool TracepointEvent::isSyscallKprobe() const { return false; }
 
-bool TracepointPerfEvent::isKprobeSyscall() const { return false; }
+bool TracepointEvent::usesKprobeIndirectPtRegs() const { return false; }
 
-bool TracepointPerfEvent::useKprobeIndirectPtRegs() const { return false; }
-
-TracepointPerfEvent::TracepointPerfEvent(const std::string &category,
-                                         const std::string &name,
-                                         std::int32_t process_id)
+TracepointEvent::TracepointEvent(const std::string &category,
+                                 const std::string &name,
+                                 std::int32_t process_id)
     : d(new PrivateData) {
 
   // Open the tracepoint

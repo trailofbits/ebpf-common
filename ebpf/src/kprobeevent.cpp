@@ -6,7 +6,7 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include "kprobeperfevent.h"
+#include "kprobeevent.h"
 #include "kprobe_helpers.h"
 
 #include <cstdint>
@@ -19,23 +19,26 @@
 #include <tob/utils/uniquefd.h>
 
 namespace tob::ebpf {
-struct KprobePerfEvent::PrivateData final {
+struct KprobeEvent::PrivateData final {
+  std::string name;
   bool ret_probe{false};
   bool is_syscall{false};
   utils::UniqueFd event;
 };
 
-KprobePerfEvent::~KprobePerfEvent() {}
+KprobeEvent::~KprobeEvent() {}
 
-KprobePerfEvent::Type KprobePerfEvent::type() const {
+KprobeEvent::Type KprobeEvent::type() const {
   return d->ret_probe ? Type::Kretprobe : Type::Kprobe;
 }
 
-int KprobePerfEvent::fd() const { return d->event.get(); }
+int KprobeEvent::fd() const { return d->event.get(); }
 
-bool KprobePerfEvent::isKprobeSyscall() const { return d->is_syscall; }
+std::string KprobeEvent::name() const { return d->name; }
 
-bool KprobePerfEvent::useKprobeIndirectPtRegs() const {
+bool KprobeEvent::isSyscallKprobe() const { return d->is_syscall; }
+
+bool KprobeEvent::usesKprobeIndirectPtRegs() const {
   auto kernel_version_exp = utils::getKernelVersion();
   if (!kernel_version_exp.succeeded()) {
     return false;
@@ -57,10 +60,11 @@ bool KprobePerfEvent::useKprobeIndirectPtRegs() const {
   return indirect_pt_regs;
 }
 
-KprobePerfEvent::KprobePerfEvent(const std::string &name, bool ret_probe,
-                                 bool is_syscall, std::int32_t process_id)
+KprobeEvent::KprobeEvent(const std::string &name, bool ret_probe,
+                         bool is_syscall, std::int32_t process_id)
     : d(new PrivateData) {
 
+  d->name = name;
   d->ret_probe = ret_probe;
   d->is_syscall = is_syscall;
 
