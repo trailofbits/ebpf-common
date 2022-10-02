@@ -6,10 +6,13 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
+#include "rawtracepointevent.h"
+
 #include <cstring>
 #include <ctype.h>
 #include <fstream>
 #include <iostream>
+#include <linux/bpf.h>
 #include <sstream>
 
 #include <elf.h>
@@ -331,21 +334,31 @@ createPerfEventOutputForCPU(std::size_t processor_index,
 }
 
 StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
-                                           IPerfEvent &perf_event) {
+                                           IEvent &perf_event) {
 
   bpf_prog_type program_type{};
   std::uint32_t linux_version{};
 
   switch (perf_event.type()) {
-  case IPerfEvent::Type::Tracepoint: {
+  case IEvent::Type::Tracepoint: {
     program_type = BPF_PROG_TYPE_TRACEPOINT;
     break;
   }
 
-  case IPerfEvent::Type::Kprobe:
-  case IPerfEvent::Type::Kretprobe:
-  case IPerfEvent::Type::Uprobe:
-  case IPerfEvent::Type::Uretprobe: {
+  case IEvent::Type::RawTracepoint: {
+    program_type = BPF_PROG_TYPE_RAW_TRACEPOINT;
+    break;
+  }
+
+  case IEvent::Type::LSM: {
+    program_type = BPF_PROG_TYPE_LSM;
+    break;
+  }
+
+  case IEvent::Type::Kprobe:
+  case IEvent::Type::Kretprobe:
+  case IEvent::Type::Uprobe:
+  case IEvent::Type::Uretprobe: {
     program_type = BPF_PROG_TYPE_KPROBE;
 
     auto linux_version_exp = getLinuxKernelVersionCode();
@@ -412,15 +425,41 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
     return StringError::create(error_message);
   }
 
-  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_SET_BPF, output.get()) < 0) {
-    return StringError::create(
-        "Failed to attach the BPF program to the perf event. Errno: " +
-        std::to_string(errno));
-  }
+  if (perf_event.type() == IEvent::Type::RawTracepoint ||
+      perf_event.type() == IEvent::Type::LSM) {
 
-  if (ioctl(perf_event.fd(), PERF_EVENT_IOC_ENABLE, 0) < 0) {
-    return StringError::create("Failed to enable the perf event. Errno: " +
-                               std::to_string(errno));
+    attr = {};
+    attr.raw_tracepoint.prog_fd = static_cast<__u32>(output.get());
+
+    if (perf_event.type() == IEvent::Type::RawTracepoint) {
+      const auto &name = perf_event.name();
+
+      std::memcpy(&attr.raw_tracepoint.name, name.c_str(),
+                  sizeof(attr.raw_tracepoint.name));
+    }
+
+    errno = 0;
+    auto raw_tp_fd = static_cast<int>(::syscall(
+        __NR_bpf, BPF_RAW_TRACEPOINT_OPEN, &attr, sizeof(union bpf_attr)));
+
+    if (raw_tp_fd < 0) {
+      return StringError::create("Failed to create the raw tracepoint");
+    }
+
+    auto &raw_tp_event = static_cast<RawTracepointEvent &>(perf_event);
+    raw_tp_event.setFileDescriptor(raw_tp_fd);
+
+  } else {
+    if (ioctl(perf_event.fd(), PERF_EVENT_IOC_SET_BPF, output.get()) < 0) {
+      return StringError::create(
+          "Failed to attach the BPF program to the perf event. Errno: " +
+          std::to_string(errno));
+    }
+
+    if (ioctl(perf_event.fd(), PERF_EVENT_IOC_ENABLE, 0) < 0) {
+      return StringError::create("Failed to enable the perf event. Errno: " +
+                                 std::to_string(errno));
+    }
   }
 
   return output;

@@ -16,9 +16,9 @@
 #include <tob/error/stringerror.h>
 
 namespace tob::ebpf {
-class IPerfEvent {
+class IEvent {
 public:
-  using Ref = std::unique_ptr<IPerfEvent>;
+  using Ref = std::unique_ptr<IEvent>;
 
   enum class Type {
     Kprobe,
@@ -27,7 +27,9 @@ public:
     Uprobe,
     Uretprobe,
 
-    Tracepoint
+    Tracepoint,
+    RawTracepoint,
+    LSM,
   };
 
   static StringErrorOr<Ref> createTracepoint(const std::string &category,
@@ -43,16 +45,20 @@ public:
                                          bool ret_probe,
                                          std::int32_t process_id = -1);
 
-  IPerfEvent() = default;
-  virtual ~IPerfEvent() = default;
+  static StringErrorOr<Ref> createRawTracepoint(const std::string &name);
+  static StringErrorOr<Ref> createLSM();
+
+  IEvent() = default;
+  virtual ~IEvent() = default;
 
   virtual Type type() const = 0;
   virtual int fd() const = 0;
+  virtual std::string name() const = 0;
 
-  virtual bool isKprobeSyscall() const = 0;
-  virtual bool useKprobeIndirectPtRegs() const = 0;
+  virtual bool isSyscallKprobe() const = 0;
+  virtual bool usesKprobeIndirectPtRegs() const = 0;
 
-  IPerfEvent(const IPerfEvent &) = delete;
-  IPerfEvent &operator=(const IPerfEvent &) = delete;
+  IEvent(const IEvent &) = delete;
+  IEvent &operator=(const IEvent &) = delete;
 };
 } // namespace tob::ebpf
