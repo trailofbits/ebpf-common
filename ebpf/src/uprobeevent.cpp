@@ -6,7 +6,7 @@
   the LICENSE file found in the root directory of this source tree.
 */
 
-#include "uprobeperfevent.h"
+#include "uprobeevent.h"
 #include "kprobe_helpers.h"
 
 #include <linux/perf_event.h>
@@ -37,28 +37,31 @@ StringErrorOr<std::uint64_t> getSymbolFileOffset(const std::string &path,
 }
 } // namespace
 
-struct UprobePerfEvent::PrivateData final {
+struct UprobeEvent::PrivateData final {
+  std::string name;
   bool ret_probe{false};
   utils::UniqueFd event;
 };
 
-UprobePerfEvent::~UprobePerfEvent() {}
+UprobeEvent::~UprobeEvent() {}
 
-UprobePerfEvent::Type UprobePerfEvent::type() const {
+UprobeEvent::Type UprobeEvent::type() const {
   return d->ret_probe ? Type::Uretprobe : Type::Uprobe;
 }
 
-int UprobePerfEvent::fd() const { return d->event.get(); }
+int UprobeEvent::fd() const { return d->event.get(); }
 
-bool UprobePerfEvent::isKprobeSyscall() const { return false; }
+std::string UprobeEvent::name() const { return d->name; }
 
-bool UprobePerfEvent::useKprobeIndirectPtRegs() const { return false; }
+bool UprobeEvent::isSyscallKprobe() const { return false; }
 
-UprobePerfEvent::UprobePerfEvent(const std::string &name,
-                                 const std::string &path, bool ret_probe,
-                                 std::int32_t process_id)
+bool UprobeEvent::usesKprobeIndirectPtRegs() const { return false; }
+
+UprobeEvent::UprobeEvent(const std::string &name, const std::string &path,
+                         bool ret_probe, std::int32_t process_id)
     : d(new PrivateData) {
 
+  d->name = name;
   d->ret_probe = ret_probe;
 
   auto symbol_offset_exp = getSymbolFileOffset(path, name);

@@ -10,17 +10,11 @@ if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Release" AND
    NOT "${CMAKE_BUILD_TYPE}" STREQUAL "Debug" AND
    NOT "${CMAKE_BUILD_TYPE}" STREQUAL "RelWithDebInfo")
 
-  set(default_cmake_build_type "RelWithDebInfo")
-
   if(NOT "${CMAKE_BUILD_TYPE}" STREQUAL "")
-    message(WARNING "ebpf-common - Invalid build type specified: ${CMAKE_BUILD_TYPE}")
+    message(FATAL_ERROR "ebpf-common - Invalid build type specified: ${CMAKE_BUILD_TYPE}")
   endif()
-
-  message(WARNING "ebpf-common - Setting CMAKE_BUILD_TYPE to ${default_cmake_build_type}")
-  set(CMAKE_BUILD_TYPE "${default_cmake_build_type}" CACHE STRING "Build type (default ${default_cmake_build_type})" FORCE)
 endif()
 
 option(EBPF_COMMON_ENABLE_TESTS "Set to ON to build the tests")
-option(EBPF_COMMON_ENABLE_SANITIZERS "Set to ON to enable sanitizers. Only available when compiling with Clang")
 
 set(CMAKE_EXPORT_COMPILE_COMMANDS true CACHE BOOL "Export the compile_commands.json file (forced)" FORCE)

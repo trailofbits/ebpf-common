@@ -10,7 +10,7 @@
 
 #include <llvm/IR/Module.h>
 
-#include <tob/ebpf/iperfevent.h>
+#include <tob/ebpf/ievent.h>
 #include <tob/ebpf/types.h>
 #include <tob/error/stringerror.h>
 
@@ -22,7 +22,7 @@ createPerfEventOutputForCPU(std::size_t processor_index,
                             std::size_t bpf_output_size);
 
 StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
-                                           IPerfEvent &perf_event);
+                                           IEvent &event);
 
 StringErrorOr<std::uint32_t> getLinuxKernelVersionCode();
 } // namespace tob::ebpf

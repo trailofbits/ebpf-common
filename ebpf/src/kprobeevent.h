@@ -10,29 +10,27 @@
 
 #include <memory>
 
-#include <llvm/IR/DerivedTypes.h>
-#include <llvm/IR/Module.h>
-
-#include <tob/ebpf/iperfevent.h>
+#include <tob/ebpf/ievent.h>
 
 namespace tob::ebpf {
-class UprobePerfEvent final : public IPerfEvent {
+class KprobeEvent final : public IEvent {
   struct PrivateData;
   std::unique_ptr<PrivateData> d;
 
 public:
-  virtual ~UprobePerfEvent() override;
+  virtual ~KprobeEvent() override;
 
   virtual Type type() const override;
   virtual int fd() const override;
+  virtual std::string name() const override;
 
-  virtual bool isKprobeSyscall() const override;
-  virtual bool useKprobeIndirectPtRegs() const override;
+  virtual bool isSyscallKprobe() const override;
+  virtual bool usesKprobeIndirectPtRegs() const override;
 
 protected:
-  UprobePerfEvent(const std::string &name, const std::string &path,
-                  bool ret_probe, std::int32_t process_id);
+  KprobeEvent(const std::string &name, bool ret_probe, bool is_syscall,
+              std::int32_t process_id);
 
-  friend class IPerfEvent;
+  friend class IEvent;
 };
 } // namespace tob::ebpf

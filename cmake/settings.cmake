@@ -23,8 +23,6 @@ set_target_properties("ebpfcommon_common_settings" PROPERTIES
     true
 )
 
-configureSanitizers("ebpfcommon_common_settings")
-
 if("${CMAKE_BUILD_TYPE}" STREQUAL "Debug")
   target_compile_options("ebpfcommon_common_settings" INTERFACE
     -O0

@@ -15,8 +15,8 @@ add_library("ebpf" OBJECT
   include/tob/ebpf/cpu.h
   src/cpu.cpp
 
-  include/tob/ebpf/iperfevent.h
-  src/iperfevent.cpp
+  include/tob/ebpf/ievent.h
+  src/ievent.cpp
 
   include/tob/ebpf/tracepointdescriptor.h
   src/tracepointdescriptor.cpp
@@ -42,17 +42,17 @@ add_library("ebpf" OBJECT
   include/tob/ebpf/bpfsyscallinterface.h
   src/bpfsyscallinterface.cpp
 
-  src/tracepointperfevent.h
-  src/tracepointperfevent.cpp
+  src/tracepointevent.h
+  src/tracepointevent.cpp
 
   src/kprobe_helpers.h
   src/kprobe_helpers.cpp
 
-  src/kprobeperfevent.h
-  src/kprobeperfevent.cpp
+  src/kprobeevent.h
+  src/kprobeevent.cpp
 
-  src/uprobeperfevent.h
-  src/uprobeperfevent.cpp
+  src/uprobeevent.h
+  src/uprobeevent.cpp
 
   include/tob/ebpf/iclangcompiler.h
   src/iclangcompiler.cpp
