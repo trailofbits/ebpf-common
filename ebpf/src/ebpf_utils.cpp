@@ -388,19 +388,6 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
   auto program_license_ptr = kProgramLicense.c_str();
   std::memcpy(&attr.license, &program_license_ptr, sizeof(attr.license));
 
-  // We could in theory try to load the program with no log buffer at first, and
-  // if it fails, try again with it. I prefer to call this once and have
-  // everything. There's a gotcha though; if this buffer is not big enough to
-  // contain the whole disasm of the program in text form, the load will fail.
-  // We have a limit of 4096 instructions, so let's use a huge buffer to take
-  // into account at least 4096 lines + decorations
-  std::vector<char> log_buffer((4096U + 100U) * 80U, 0U);
-
-  auto log_buffer_ptr = log_buffer.data();
-  std::memcpy(&attr.log_buf, &log_buffer_ptr, sizeof(attr.log_buf));
-
-  attr.log_size = static_cast<__u32>(log_buffer.size());
-
   utils::UniqueFd output;
 
   {
@@ -412,17 +399,30 @@ StringErrorOr<utils::UniqueFd> loadProgram(const BPFProgram &program,
   }
 
   if (output.get() < 0) {
-    std::string error_message{"The program could not be loaded: "};
+    std::vector<char> log_buffer(1024U * 1024U * 5U, 0U);
+    attr.log_size = static_cast<__u32>(log_buffer.size());
 
-    if (std::strlen(log_buffer_ptr) != 0U) {
-      error_message += log_buffer_ptr;
-    } else {
-      error_message += "No error output received from the kernel.";
+    auto log_buffer_ptr = log_buffer.data();
+    std::memcpy(&attr.log_buf, &log_buffer_ptr, sizeof(attr.log_buf));
+
+    errno = 0;
+    auto fd = static_cast<int>(
+        ::syscall(__NR_bpf, BPF_PROG_LOAD, &attr, sizeof(attr)));
+
+    if (fd < 0) {
+      std::string error_message{"The program could not be loaded: "};
+
+      if (std::strlen(log_buffer_ptr) != 0U) {
+        error_message += log_buffer_ptr;
+      } else {
+        error_message += "No error output received from the kernel.";
+      }
+
+      error_message += " errno was set to " + std::to_string(errno);
+      return StringError::create(error_message);
     }
 
-    error_message += " errno was set to " + std::to_string(errno);
-
-    return StringError::create(error_message);
+    output.reset(fd);
   }
 
   if (perf_event.type() == IEvent::Type::RawTracepoint ||
