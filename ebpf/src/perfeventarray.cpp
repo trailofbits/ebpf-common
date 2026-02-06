@@ -172,7 +172,7 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
   }
 
   d->perf_event_array_map = perf_event_array_map_exp.takeValue();
-  d->processor_count = static_cast<std::size_t>(get_nprocs_conf());
+  d->processor_count = static_cast<std::size_t>(get_nprocs());
 
   for (auto cpu_index = 0U; cpu_index < d->processor_count; ++cpu_index) {
     auto perf_event_output_exp = createPerfEventOutputForCPU(
