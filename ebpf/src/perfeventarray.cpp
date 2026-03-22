@@ -14,9 +14,9 @@
 #include <poll.h>
 #include <sys/ioctl.h>
 #include <sys/mman.h>
-#include <sys/sysinfo.h>
 #include <unistd.h>
 
+#include <tob/ebpf/cpu.h>
 #include <tob/ebpf/ebpf_utils.h>
 #include <tob/ebpf/perfeventarray.h>
 #include <tob/ebpf/typedbpfmap.h>
@@ -44,13 +44,25 @@ static const auto kPerfDataHeadOffset =
 
 } // namespace
 
+// perf_event_output_list and perf_event_output_pollfd are parallel vectors
+// indexed by a dense pollfd index (0..N-1), not by CPU id.
+//
+// Online CPUs may be non-contiguous (e.g. {0,1,4,7}), but these vectors are
+// always dense. The actual CPU id is stored in each
+// PerfEventOutput::processor_index.
+//
+// Example: online CPUs = {0, 1, 4, 7}
+//   pollfd index 0 -> perf_event_output_list[0] (cpu 0)
+//   pollfd index 1 -> perf_event_output_list[1] (cpu 1)
+//   pollfd index 2 -> perf_event_output_list[2] (cpu 4)
+//   pollfd index 3 -> perf_event_output_list[3] (cpu 7)
 struct PerfEventArray::PrivateData final {
   PerfEventArrayMap::Ref perf_event_array_map;
 
   std::size_t single_perf_event_output_size{};
   std::size_t processor_count{};
 
-  std::unordered_map<std::size_t, PerfEventOutput> perf_event_output_list;
+  std::vector<PerfEventOutput> perf_event_output_list;
   std::vector<struct pollfd> perf_event_output_pollfd;
 };
 
@@ -99,18 +111,17 @@ bool PerfEventArray::read(BufferList &buffer_list,
     return true;
   }
 
-  for (auto processor_index = 0U;
-       processor_index < d->perf_event_output_pollfd.size();
-       ++processor_index) {
+  for (auto pollfd_index = 0U;
+       pollfd_index < d->perf_event_output_pollfd.size(); ++pollfd_index) {
 
-    auto &poll_fd = d->perf_event_output_pollfd.at(processor_index);
+    auto &poll_fd = d->perf_event_output_pollfd[pollfd_index];
     if ((poll_fd.revents & POLLIN) == 0) {
       continue;
     }
 
     poll_fd.revents = 0;
 
-    auto perf_buffer_list = readPerfMemory(processor_index);
+    auto perf_buffer_list = readPerfMemory(pollfd_index);
     if (perf_buffer_list.empty()) {
       continue;
     }
@@ -172,9 +183,11 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
   }
 
   d->perf_event_array_map = perf_event_array_map_exp.takeValue();
-  d->processor_count = static_cast<std::size_t>(get_nprocs_conf());
 
-  for (auto cpu_index = 0U; cpu_index < d->processor_count; ++cpu_index) {
+  auto online_cpus = getOnlineProcessorList();
+  d->processor_count = online_cpus.size();
+
+  for (auto cpu_index : online_cpus) {
     auto perf_event_output_exp = createPerfEventOutputForCPU(
         cpu_index, d->single_perf_event_output_size);
 
@@ -184,8 +197,8 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
 
     auto perf_event_output = perf_event_output_exp.takeValue();
 
-    auto err =
-        d->perf_event_array_map->set(cpu_index, perf_event_output.fd.get());
+    auto err = d->perf_event_array_map->set(
+        static_cast<std::uint32_t>(cpu_index), perf_event_output.fd.get());
 
     if (!err.succeeded()) {
       throw StringError::create("Failed to populate the perf event array map");
@@ -195,19 +208,19 @@ PerfEventArray::PerfEventArray(std::size_t perf_event_output_page_exp)
     poll_fd.fd = perf_event_output.fd.get();
     poll_fd.events = POLLIN;
     d->perf_event_output_pollfd.push_back(std::move(poll_fd));
-    d->perf_event_output_list.insert({cpu_index, std::move(perf_event_output)});
+    d->perf_event_output_list.push_back(std::move(perf_event_output));
   }
 }
 
 PerfEventArray::BufferList
-PerfEventArray::readPerfMemory(std::size_t processor_index) {
+PerfEventArray::readPerfMemory(std::size_t pollfd_index) {
   BufferList buffer_list;
 
-  if (processor_index > d->perf_event_output_list.size()) {
+  if (pollfd_index >= d->perf_event_output_list.size()) {
     return buffer_list;
   }
 
-  auto &perf_event_output = d->perf_event_output_list.at(processor_index);
+  auto &perf_event_output = d->perf_event_output_list[pollfd_index];
   auto perf_header_memory = perf_event_output.memory->pointer();
 
   std::uint64_t data_size{0U};

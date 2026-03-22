@@ -46,7 +46,7 @@ private:
   std::unique_ptr<PrivateData> d;
 
   PerfEventArray(std::size_t perf_event_output_page_exp);
-  BufferList readPerfMemory(std::size_t processor_index);
+  BufferList readPerfMemory(std::size_t pollfd_index);
 };
 
 } // namespace tob::ebpf
