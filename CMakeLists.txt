@@ -24,6 +24,7 @@ if(EBPF_COMMON_ENABLE_TESTS)
     tests/main.cpp
 
     tests/bpfmap.cpp
+    tests/cpu.cpp
     tests/erroror.cpp
     tests/llvm_utils.cpp
     tests/llvmbridge.cpp

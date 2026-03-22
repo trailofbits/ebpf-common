@@ -9,7 +9,13 @@
 #pragma once
 
 #include <cstddef>
+#include <string>
+#include <vector>
 
 namespace tob::ebpf {
+
 std::size_t getPossibleProcessorCount();
+std::vector<std::size_t> parseCpuList(const std::string &cpu_list_str);
+std::vector<std::size_t> getOnlineProcessorList();
+
 } // namespace tob::ebpf
